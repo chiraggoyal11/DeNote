@@ -1,0 +1,175 @@
+.App {
+  width: 100%;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.auth-container {
+  max-width: 400px;
+  margin: 100px auto;
+  padding: 2rem;
+  border-radius: 12px;
+  background: #1a1a1a;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.auth-container h2 {
+  margin-bottom: 1.5rem;
+  color: #646cff;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+}
+
+.btn {
+  width: 100%;
+  padding: 0.8em;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.25s;
+}
+
+.btn:hover {
+  background-color: #535bf2;
+}
+
+.btn-secondary {
+  background-color: #888;
+}
+
+.btn-secondary:hover {
+  background-color: #666;
+}
+
+.error {
+  color: #ff6b6b;
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: rgba(255, 107, 107, 0.1);
+  border-radius: 8px;
+}
+
+.success {
+  color: #51cf66;
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: rgba(81, 207, 102, 0.1);
+  border-radius: 8px;
+}
+
+.link {
+  color: #646cff;
+  text-decoration: none;
+  margin-top: 1rem;
+  display: inline-block;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: #1a1a1a;
+  margin-bottom: 2rem;
+  border-radius: 12px;
+}
+
+.navbar h1 {
+  color: #646cff;
+  margin: 0;
+}
+
+.navbar nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.navbar a {
+  color: rgba(255, 255, 255, 0.87);
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: background-color 0.25s;
+}
+
+.navbar a:hover {
+  background-color: #2a2a2a;
+}
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.note-card {
+  background: #1a1a1a;
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.note-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(100, 108, 255, 0.2);
+}
+
+.note-card h3 {
+  color: #646cff;
+  margin-bottom: 0.5rem;
+}
+
+.note-card p {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9em;
+  margin: 0.3rem 0;
+}
+
+.rating {
+  color: #ffd43b;
+  margin-top: 0.5rem;
+}
+
+@media (prefers-color-scheme: light) {
+  .auth-container,
+  .navbar,
+  .note-card {
+    background: #f9f9f9;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  }
+  
+  .navbar a:hover {
+    background-color: #ececec;
+  }
+}

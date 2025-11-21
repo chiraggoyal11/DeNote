@@ -1,0 +1,32 @@
+
+> denote@1.0.0 start
+> node app.js
+
+[dotenv@17.2.1] injecting env (4) from config.env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[1m[4m[32mserver is running on port 3000[39m[24m[22m
+node:events:497
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:1904:16)
+    at listenInCluster (node:net:1961:12)
+    at Server.listen (node:net:2063:7)
+    at Function.listen (/Users/paarthsanyal/Desktop/DeNote-main/node_modules/express/lib/application.js:605:24)
+    at Object.<anonymous> (/Users/paarthsanyal/Desktop/DeNote-main/app.js:24:5)
+    at Module._compile (node:internal/modules/cjs/loader:1469:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1548:10)
+    at Module.load (node:internal/modules/cjs/loader:1288:32)
+    at Module._load (node:internal/modules/cjs/loader:1104:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:174:12)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1940:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+
+Node.js v20.18.0
