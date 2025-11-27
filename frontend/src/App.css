@@ -1,3 +1,74 @@
+.about-denote-card {
+  background: #23272f;
+  padding: 2.5rem 2rem;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(100, 108, 255, 0.10);
+  color: #f3f3f3;
+  margin-top: 3rem;
+  transition: box-shadow 0.2s;
+}
+
+.about-denote-title {
+  color: #7c82ff;
+  margin-bottom: 1.2rem;
+  font-size: 1.6em;
+}
+
+.about-denote-desc {
+  color: #cfd8dc;
+  font-size: 1.12em;
+  line-height: 1.7;
+}
+.note-details-card {
+  background: #23272f;
+  padding: 2.5rem 2rem;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(100, 108, 255, 0.10);
+  color: #f3f3f3;
+  margin-top: 2rem;
+  transition: box-shadow 0.2s;
+}
+
+.note-details-card h2 {
+  color: #7c82ff;
+  margin-bottom: 1.2rem;
+}
+
+.note-details-card p,
+.note-details-card code {
+  color: #cfd8dc;
+  font-size: 1.05em;
+}
+
+.note-details-card .rating {
+  color: #ffd43b;
+  font-size: 1.1em;
+}
+
+.note-details-card .btn,
+.note-details-card .btn-secondary {
+  width: auto;
+  min-width: 120px;
+  margin-top: 0.5rem;
+  margin-right: 1rem;
+}
+
+.note-details-card .btn-secondary {
+  background: #ff6b6b;
+  color: #fff;
+}
+
+.note-details-card .btn-secondary:hover {
+  background: #ff4b4b;
+}
+
+.note-details-card input[type="number"] {
+  background: #181a20;
+  color: #fff;
+  border: 1px solid #646cff;
+  border-radius: 6px;
+  padding: 0.5em;
+}
 .App {
   width: 100%;
   min-height: 100vh;

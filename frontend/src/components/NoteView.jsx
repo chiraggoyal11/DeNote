@@ -96,7 +96,7 @@ function NoteView({ onLogout }) {
       <div style={{ textAlign: 'left', marginTop: '2rem' }}>
         <Link to="/notes" className="link">← Back to Notes</Link>
 
-        <div style={{ marginTop: '2rem', padding: '2rem', background: '#1a1a1a', borderRadius: '12px' }}>
+        <div className="note-details-card">
           <h2>{note?.title || 'Untitled Note'}</h2>
           
           <div style={{ marginTop: '1.5rem' }}>

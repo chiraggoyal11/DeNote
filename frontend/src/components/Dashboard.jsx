@@ -72,12 +72,12 @@ function Dashboard({ onLogout }) {
           </div>
         </div>
 
-        <div style={{ marginTop: '3rem', padding: '1.5rem', background: '#1a1a1a', borderRadius: '12px' }}>
-          <h3>About DeNote</h3>
-          <p style={{ marginTop: '1rem', lineHeight: '1.6' }}>
-            DeNote is a decentralized notes sharing platform built on IPFS. Upload, share, and discover 
-            high-quality educational notes rated by the community. All notes are stored permanently on 
-            IPFS, ensuring censorship resistance and global accessibility.
+        <div className="about-denote-card">
+          <h3 className="about-denote-title">About DeNote</h3>
+          <p className="about-denote-desc">
+            <strong>DeNote</strong> is a decentralized notes sharing platform built on <span style={{color:'#7c82ff'}}>IPFS</span>.<br/>
+            Upload, share, and discover high-quality educational notes rated by the community.<br/>
+            All notes are stored permanently on IPFS, ensuring <span style={{color:'#ffd43b'}}>censorship resistance</span> and <span style={{color:'#51cf66'}}>global accessibility</span>.
           </p>
         </div>
       </div>

@@ -18,7 +18,10 @@ dotenv.config({
 
 connectDB(); 
 
-app.use('/api/denote' , require('./routes/noteRoute'));
-const PORT=process.env.PORT ;
 
-app.listen(PORT , console.log(`server is running on port ${PORT}`.green.underline.bold));
+app.use('/api/denote' , require('./routes/noteRoute'));
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+    console.log(`server is running on port ${PORT}`.green.underline.bold);
+});
