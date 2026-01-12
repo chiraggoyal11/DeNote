@@ -20,16 +20,19 @@ const allowedOrigins = [
 
 const corsOptions = {
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl)
+        // Allow requests with no origin (like mobile apps, curl, or server-to-server)
         if (!origin) return callback(null, true);
         
-        if (allowedOrigins.indexOf(origin) !== -1 || process.env.FRONTEND_URL === '*') {
+        if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
+            console.log('Blocked by CORS:', origin);
             callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     optionsSuccessStatus: 200
 };
 
@@ -38,6 +41,9 @@ app.use(morgan('dev'))
 
 app.use(express.json({}));
 app.use(express.urlencoded({extended:false}));
+
+// Handle OPTIONS preflight requests
+app.options('*', cors(corsOptions));
 
 connectDB(); 
 
