@@ -9,7 +9,7 @@ module.exports = async function(req,res,next) {
         });
     }
     try {
-        await jwt.verify(token , process.env.jwtSecret , (err,decoded) => {
+    await jwt.verify(token , process.env.JWT_SECRET , (err,decoded) => {
             if(err){
                 res.status(401).json({
                     msg : "Error"
