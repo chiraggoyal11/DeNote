@@ -1,0 +1,19 @@
+{
+  "name": "DeNote",
+  "install": "bash ./.cursor/install.sh",
+  "start": "bash ./.cursor/start.sh",
+  "terminals": [
+    {
+      "name": "backend",
+      "command": "npm start"
+    },
+    {
+      "name": "frontend",
+      "command": "cd frontend && npm run dev"
+    }
+  ],
+  "ports": [
+    { "name": "backend", "port": 5000 },
+    { "name": "frontend", "port": 5173 }
+  ]
+}
