@@ -1,3 +1,5 @@
 node_modules
 config.env
+.env
+frontend/.env
 yarn.lock
