@@ -17,6 +17,7 @@ if (process.env.NODE_ENV !== 'production') {
 // CORS configuration - allows requests from frontend
 const allowedOrigins = [
     'https://denote-nu.vercel.app',
+    'https://de-note-theta.vercel.app',
     'http://localhost:5173',
     'http://localhost:5174'
 ];
