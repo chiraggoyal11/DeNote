@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-module.exports = async function(req, res, next) {
+module.exports = function(req, res, next) {
     const authHeader = req.header('Authorization');
 
     if (!authHeader) {
@@ -9,10 +9,9 @@ module.exports = async function(req, res, next) {
         });
     }
 
-    // Frontend sends "Bearer <token>"; accept raw token too for compatibility.
-    const token = authHeader.startsWith('Bearer ')
-        ? authHeader.slice(7).trim()
-        : authHeader.trim();
+    // Frontend sends "Bearer <token>"; accept raw token too.
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+    const token = (match ? match[1] : authHeader).trim();
 
     if (!token) {
         return res.status(401).json({

@@ -30,14 +30,16 @@ function Register({ onLogin }) {
     try {
       const { confirmPassword, ...registerData } = formData
       const response = await authAPI.register(registerData)
-      const { success, token, msg } = response.data
+      const { success, token, user, msg } = response.data
 
-      // Backend returns HTTP 200 with success:false when username already exists
       if (!success || !token) {
         setError(msg || 'Registration failed. Please try again.')
         return
       }
 
+      if (user?.username) {
+        localStorage.setItem('username', user.username)
+      }
       onLogin(token)
       navigate('/dashboard', { replace: true })
     } catch (err) {

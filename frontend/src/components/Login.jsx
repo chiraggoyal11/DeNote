@@ -19,8 +19,11 @@ function Login({ onLogin }) {
 
     try {
       const response = await authAPI.login(formData)
-      const { success, token, msg } = response.data
+      const { success, token, user, msg } = response.data
       if (success && token) {
+        if (user?.username) {
+          localStorage.setItem('username', user.username)
+        }
         onLogin(token)
         navigate('/dashboard', { replace: true })
       } else {
