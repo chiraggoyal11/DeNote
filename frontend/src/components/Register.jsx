@@ -30,10 +30,9 @@ function Register({ onLogin }) {
     setError('')
 
     if (!formData.email.trim() && !formData.phone.trim()) {
-      setError('Provide an email or phone number (needed for verification and password reset).')
+      setError('Provide an email or phone number for password recovery.')
       return
     }
-
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
       return
@@ -75,42 +74,46 @@ function Register({ onLogin }) {
   }
 
   return (
-    <div className="auth-container">
-      <h2>📚 Register for DeNote</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Username</label>
-          <input type="text" name="username" value={formData.username} onChange={handleChange} required />
-        </div>
-        <div className="form-group">
-          <label>Email</label>
-          <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@example.com" />
-        </div>
-        <div className="form-group">
-          <label>Phone</label>
-          <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+9198XXXXXXXX" />
-        </div>
-        <p className="auth-hint">Provide at least one of email or phone for OTP password reset.</p>
-        <div className="form-group">
-          <label>Password</label>
-          <input type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} />
-        </div>
-        <div className="form-group">
-          <label>Confirm Password</label>
-          <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required minLength={6} />
-        </div>
-        {error && <div className="error">{error}</div>}
-        <button type="submit" className="btn" disabled={loading}>
-          {loading ? 'Registering...' : 'Register'}
-        </button>
-      </form>
+    <div className="auth-shell">
+      <div className="auth-panel">
+        <p className="auth-brand">DeNote</p>
+        <p className="auth-lead">Create an account to share and find course notes on decentralized storage.</p>
 
-      <div className="auth-divider"><span>or</span></div>
-      <GoogleSignIn onCredential={handleGoogle} disabled={loading} />
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="username">Username</label>
+            <input id="username" type="text" name="username" value={formData.username} onChange={handleChange} required />
+          </div>
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input id="email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@example.com" />
+          </div>
+          <div className="form-group">
+            <label htmlFor="phone">Phone</label>
+            <input id="phone" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+9198XXXXXXXX" />
+          </div>
+          <p className="auth-hint">Email or phone is required for password reset.</p>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input id="password" type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} />
+          </div>
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm password</label>
+            <input id="confirmPassword" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required minLength={6} />
+          </div>
+          {error && <div className="error">{error}</div>}
+          <button type="submit" className="btn" disabled={loading} style={{ marginTop: '0.35rem' }}>
+            {loading ? 'Creating account…' : 'Create account'}
+          </button>
+        </form>
 
-      <p style={{ marginTop: '1rem' }}>
-        Already have an account? <Link to="/login" className="link">Login here</Link>
-      </p>
+        <div className="auth-divider"><span>or</span></div>
+        <GoogleSignIn onCredential={handleGoogle} disabled={loading} />
+
+        <p className="auth-footer">
+          Already have an account? <Link to="/login" className="link">Sign in</Link>
+        </p>
+      </div>
     </div>
   )
 }
