@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './components/Login'
 import Register from './components/Register'
+import ForgotPassword from './components/ForgotPassword'
 import Dashboard from './components/Dashboard'
 import UploadNote from './components/UploadNote'
 import NotesList from './components/NotesList'
@@ -38,6 +39,10 @@ function App() {
           <Route 
             path="/register" 
             element={!isAuthenticated ? <Register onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} 
+          />
+          <Route 
+            path="/forgot-password" 
+            element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" replace />} 
           />
           <Route 
             path="/dashboard" 

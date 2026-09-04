@@ -24,6 +24,9 @@ export const authAPI = {
   register: (userData) => api.post('/register', userData),
   login: (credentials) => api.post('/login', credentials),
   getProfile: () => api.get('/'),
+  forgotPassword: (payload) => api.post('/forgot-password', payload),
+  resetPassword: (payload) => api.post('/reset-password', payload),
+  googleAuth: (credential) => api.post('/auth/google', { credential }),
 }
 
 export const notesAPI = {

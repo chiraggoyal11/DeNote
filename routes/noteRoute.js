@@ -9,9 +9,32 @@ const multer = require('multer');
 const axios=require('axios');
 const FormData=require('form-data');
 const fs=require('fs');
+const { OAuth2Client } = require('google-auth-library');
+const { generateOtp, hashOtp, verifyOtp } = require('../utils/otp');
+const { sendEmailOtp, sendSmsOtp } = require('../utils/notify');
+const { signUserToken, publicUser } = require('../utils/authTokens');
 
 const memory=multer.memoryStorage();
 const upload=multer({memory: memory});
+const googleClient = process.env.GOOGLE_CLIENT_ID
+    ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+    : null;
+
+function normalizeEmail(email) {
+    return email ? String(email).trim().toLowerCase() : '';
+}
+
+function normalizePhone(phone) {
+    return phone ? String(phone).trim().replace(/\s+/g, '') : '';
+}
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidPhone(phone) {
+    return /^\+?[0-9]{8,15}$/.test(phone);
+}
 
 router.get('/', user_jwt, async (req, res, next) => {
     try {
@@ -31,9 +54,40 @@ router.get('/', user_jwt, async (req, res, next) => {
 });
 
 router.post('/register', async (req,res,next) => {
-    const { username , password }=req.body;
+    const { username , password, email, phone }=req.body;
 
     try{
+        if (!username || !password) {
+            return res.status(400).json({
+                success: false,
+                msg: "Username and password are required."
+            });
+        }
+
+        const normalizedEmail = normalizeEmail(email);
+        const normalizedPhone = normalizePhone(phone);
+
+        if (!normalizedEmail && !normalizedPhone) {
+            return res.status(400).json({
+                success: false,
+                msg: "Provide an email or phone number for verification and password recovery."
+            });
+        }
+
+        if (normalizedEmail && !isValidEmail(normalizedEmail)) {
+            return res.status(400).json({
+                success: false,
+                msg: "Invalid email address."
+            });
+        }
+
+        if (normalizedPhone && !isValidPhone(normalizedPhone)) {
+            return res.status(400).json({
+                success: false,
+                msg: "Invalid phone number. Use digits with optional leading +."
+            });
+        }
+
         let user_exist=await User.findOne({ username : username});
         if(user_exist){
             return res.status(400).json({
@@ -41,38 +95,44 @@ router.post('/register', async (req,res,next) => {
                 msg : "Username already exists."
             });
         }
+
+        if (normalizedEmail) {
+            const emailExists = await User.findOne({ email: normalizedEmail });
+            if (emailExists) {
+                return res.status(400).json({
+                    success: false,
+                    msg: "Email already registered."
+                });
+            }
+        }
+
+        if (normalizedPhone) {
+            const phoneExists = await User.findOne({ phone: normalizedPhone });
+            if (phoneExists) {
+                return res.status(400).json({
+                    success: false,
+                    msg: "Phone number already registered."
+                });
+            }
+        }
+
         let user=new User();
         user.username=username;
+        if (normalizedEmail) user.email = normalizedEmail;
+        if (normalizedPhone) user.phone = normalizedPhone;
+        user.authProvider = 'local';
 
         const salt = await bcryptjs.genSalt(10);
         user.password=await bcryptjs.hash(password,salt);
 
         await user.save();
 
-        const payload={
-            user:{
-                id : user.id
-            }
-        };
-
-        jwt.sign(payload, process.env.JWT_SECRET ,{ expiresIn : 3600},
-            (err,token)=>{
-                if(err) {
-                    return res.status(500).json({
-                        success: false,
-                        msg: "Failed to create token"
-                    });
-                }
-                res.status(200).json({
-                    success : true,
-                    token : token,
-                    user : {
-                        _id: user.id,
-                        username: user.username
-                    }
-                });
-            }
-        );
+        const token = await signUserToken(user);
+        res.status(200).json({
+            success : true,
+            token : token,
+            user : publicUser(user)
+        });
     }catch(err){
         console.log(err);
         return res.status(500).json({
@@ -95,6 +155,13 @@ router.post('/login' , async (req,res,next)=> {
             });
         }
 
+        if (!user.password) {
+            return res.status(400).json({
+                success: false,
+                msg: "This account uses Google sign-in. Please continue with Google."
+            });
+        }
+
         const isMatch = await bcryptjs.compare(password , user.password);
         if(!isMatch){
             return res.status(400).json({
@@ -103,35 +170,202 @@ router.post('/login' , async (req,res,next)=> {
             });
         }
 
-        const payload={
-            user : {
-                id: user.id
-            }
-        };
-
-        jwt.sign(payload,process.env.JWT_SECRET,{expiresIn:3600},
-            (err,token)=>{
-                if(err) {
-                    return res.status(500).json({
-                        success: false,
-                        msg: "Failed to create token"
-                    });
-                }
-                res.status(200).json({
-                    success: true,
-                    token: token,
-                    user : {
-                        _id: user.id,
-                        username: user.username
-                    }
-                });
-            }
-        );
+        const token = await signUserToken(user);
+        res.status(200).json({
+            success: true,
+            token: token,
+            user : publicUser(user)
+        });
     }catch(err){
         console.log(err);
         res.status(500).json({
             success: false,
             msg: "Failed"
+        });
+    }
+});
+
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body.email);
+        const phone = normalizePhone(req.body.phone);
+
+        if (!email && !phone) {
+            return res.status(400).json({
+                success: false,
+                msg: "Provide the email or phone number used at registration."
+            });
+        }
+
+        const query = email ? { email } : { phone };
+        const user = await User.findOne(query);
+
+        // Same response whether or not the user exists (avoid account enumeration)
+        if (!user) {
+            return res.status(200).json({
+                success: true,
+                msg: "If an account exists, an OTP has been sent."
+            });
+        }
+
+        const otp = generateOtp();
+        user.otpHash = await hashOtp(otp);
+        user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+        user.otpPurpose = 'reset_password';
+        await user.save();
+
+        if (email) {
+            await sendEmailOtp(email, otp);
+        } else {
+            await sendSmsOtp(phone, otp);
+        }
+
+        res.status(200).json({
+            success: true,
+            msg: "If an account exists, an OTP has been sent.",
+            channel: email ? 'email' : 'sms'
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({
+            success: false,
+            msg: "Failed to send OTP"
+        });
+    }
+});
+
+router.post('/reset-password', async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body.email);
+        const phone = normalizePhone(req.body.phone);
+        const { otp, newPassword } = req.body;
+
+        if ((!email && !phone) || !otp || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                msg: "Email or phone, OTP, and new password are required."
+            });
+        }
+
+        if (String(newPassword).length < 6) {
+            return res.status(400).json({
+                success: false,
+                msg: "Password must be at least 6 characters."
+            });
+        }
+
+        const query = email ? { email } : { phone };
+        const user = await User.findOne(query);
+
+        if (!user || !user.otpHash || user.otpPurpose !== 'reset_password') {
+            return res.status(400).json({
+                success: false,
+                msg: "Invalid or expired OTP."
+            });
+        }
+
+        if (!user.otpExpires || user.otpExpires.getTime() < Date.now()) {
+            return res.status(400).json({
+                success: false,
+                msg: "OTP has expired. Request a new one."
+            });
+        }
+
+        const ok = await verifyOtp(otp, user.otpHash);
+        if (!ok) {
+            return res.status(400).json({
+                success: false,
+                msg: "Invalid or expired OTP."
+            });
+        }
+
+        const salt = await bcryptjs.genSalt(10);
+        user.password = await bcryptjs.hash(newPassword, salt);
+        user.otpHash = undefined;
+        user.otpExpires = undefined;
+        user.otpPurpose = undefined;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            msg: "Password updated. You can log in now."
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({
+            success: false,
+            msg: "Failed to reset password"
+        });
+    }
+});
+
+router.post('/auth/google', async (req, res) => {
+    try {
+        const { credential } = req.body;
+
+        if (!process.env.GOOGLE_CLIENT_ID || !googleClient) {
+            return res.status(503).json({
+                success: false,
+                msg: "Google sign-in is not configured on the server."
+            });
+        }
+
+        if (!credential) {
+            return res.status(400).json({
+                success: false,
+                msg: "Missing Google credential."
+            });
+        }
+
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID
+        });
+        const payload = ticket.getPayload();
+        const googleId = payload.sub;
+        const email = normalizeEmail(payload.email);
+        const name = payload.name || (email ? email.split('@')[0] : `user_${googleId.slice(0, 8)}`);
+
+        let user = await User.findOne({
+            $or: [
+                { googleId },
+                ...(email ? [{ email }] : [])
+            ]
+        });
+
+        if (!user) {
+            let username = name.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || `user_${googleId.slice(0, 8)}`;
+            const base = username;
+            let i = 1;
+            while (await User.findOne({ username })) {
+                username = `${base}${i++}`.slice(0, 24);
+            }
+
+            user = new User({
+                username,
+                email: email || undefined,
+                googleId,
+                authProvider: 'google'
+            });
+            await user.save();
+        } else {
+            if (!user.googleId) user.googleId = googleId;
+            if (email && !user.email) user.email = email;
+            if (!user.authProvider) user.authProvider = 'google';
+            await user.save();
+        }
+
+        const token = await signUserToken(user);
+        res.status(200).json({
+            success: true,
+            token,
+            user: publicUser(user)
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(401).json({
+            success: false,
+            msg: "Google authentication failed."
         });
     }
 });
