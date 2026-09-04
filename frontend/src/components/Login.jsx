@@ -18,21 +18,18 @@ function Login({ onLogin }) {
     setLoading(true)
 
     try {
-      console.log('Logging in with:', formData)
       const response = await authAPI.login(formData)
-      console.log('Login response:', response.data)
-      const { token } = response.data
-      if (token) {
-        console.log('Token received, saving to localStorage')
-        localStorage.setItem('token', token)
-        console.log('Token saved, redirecting...')
-        // Force a full page redirect
-        window.location.href = '/dashboard'
+      const { success, token, user, msg } = response.data
+      if (success && token) {
+        if (user?.username) {
+          localStorage.setItem('username', user.username)
+        }
+        onLogin(token)
+        navigate('/dashboard', { replace: true })
       } else {
-        setError('No token received from server')
+        setError(msg || 'No token received from server')
       }
     } catch (err) {
-      console.error('Login error:', err)
       setError(err.response?.data?.msg || err.response?.data?.message || 'Login failed. Please try again.')
     } finally {
       setLoading(false)

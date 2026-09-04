@@ -178,9 +178,12 @@
   margin: 0;
 }
 
-.navbar nav {
+.navbar nav,
+.navbar-links {
   display: flex;
+  align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .navbar a {

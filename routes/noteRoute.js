@@ -36,14 +36,13 @@ router.post('/register', async (req,res,next) => {
     try{
         let user_exist=await User.findOne({ username : username});
         if(user_exist){
-            return res.json({
+            return res.status(400).json({
                 success : false,
                 msg : "Username already exists."
             });
         }
         let user=new User();
         user.username=username;
-        user.password=password;
 
         const salt = await bcryptjs.genSalt(10);
         user.password=await bcryptjs.hash(password,salt);
@@ -56,18 +55,30 @@ router.post('/register', async (req,res,next) => {
             }
         };
 
-    jwt.sign(payload, process.env.JWT_SECRET ,{ expiresIn : 3600},
+        jwt.sign(payload, process.env.JWT_SECRET ,{ expiresIn : 3600},
             (err,token)=>{
-                if(err) throw err;
+                if(err) {
+                    return res.status(500).json({
+                        success: false,
+                        msg: "Failed to create token"
+                    });
+                }
                 res.status(200).json({
                     success : true,
                     token : token,
-                    user : user
+                    user : {
+                        _id: user.id,
+                        username: user.username
+                    }
                 });
             }
         );
     }catch(err){
         console.log(err);
+        return res.status(500).json({
+            success: false,
+            msg: "Registration failed"
+        });
     }
     
 });
@@ -79,7 +90,7 @@ router.post('/login' , async (req,res,next)=> {
         let user = await User.findOne({username : username});
         if(!user){
             return res.status(400).json({
-                sucess: false,
+                success: false,
                 msg: "Invalid username."
             });
         }
@@ -98,13 +109,21 @@ router.post('/login' , async (req,res,next)=> {
             }
         };
 
-    jwt.sign(payload,process.env.JWT_SECRET,{expiresIn:3600},
+        jwt.sign(payload,process.env.JWT_SECRET,{expiresIn:3600},
             (err,token)=>{
-                if(err) throw err;
+                if(err) {
+                    return res.status(500).json({
+                        success: false,
+                        msg: "Failed to create token"
+                    });
+                }
                 res.status(200).json({
                     success: true,
                     token: token,
-                    user : user
+                    user : {
+                        _id: user.id,
+                        username: user.username
+                    }
                 });
             }
         );

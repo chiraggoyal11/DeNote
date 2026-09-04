@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { authAPI } from '../api'
 
 function Dashboard({ onLogout }) {
-  const [user, setUser] = useState({ username: 'User' })
-  const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
+  const [user, setUser] = useState(() => {
+    const cached = localStorage.getItem('username')
+    return { username: cached || 'User' }
+  })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchUserProfile()
@@ -14,14 +16,15 @@ function Dashboard({ onLogout }) {
   const fetchUserProfile = async () => {
     try {
       const response = await authAPI.getProfile()
-      console.log('Profile response:', response.data)
-      if (response.data.user) {
+      if (response.data?.user) {
         setUser(response.data.user)
+        if (response.data.user.username) {
+          localStorage.setItem('username', response.data.user.username)
+        }
       }
     } catch (err) {
       console.error('Failed to fetch profile:', err)
-      // Don't redirect on error, just use default user
-      console.log('Using default user data')
+      // Keep cached username from register/login if profile call fails
     } finally {
       setLoading(false)
     }
@@ -29,10 +32,12 @@ function Dashboard({ onLogout }) {
 
   const handleLogout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    if (onLogout) onLogout()
     window.location.href = '/login'
   }
 
-  if (loading) {
+  if (loading && !user?.username) {
     return (
       <div className="container">
         <div style={{ marginTop: '3rem' }}>Loading...</div>
@@ -44,11 +49,11 @@ function Dashboard({ onLogout }) {
     <div className="container">
       <nav className="navbar">
         <h1>📚 DeNote</h1>
-        <div>
+        <div className="navbar-links">
           <Link to="/dashboard">Dashboard</Link>
           <Link to="/upload">Upload Note</Link>
           <Link to="/notes">Browse Notes</Link>
-          <button onClick={handleLogout} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
+          <button type="button" onClick={handleLogout} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
             Logout
           </button>
         </div>
@@ -64,10 +69,10 @@ function Dashboard({ onLogout }) {
           <h3>Quick Actions</h3>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
             <Link to="/upload" style={{ textDecoration: 'none' }}>
-              <button className="btn">📤 Upload New Note</button>
+              <button type="button" className="btn">📤 Upload New Note</button>
             </Link>
             <Link to="/notes" style={{ textDecoration: 'none' }}>
-              <button className="btn">📖 Browse Notes</button>
+              <button type="button" className="btn">📖 Browse Notes</button>
             </Link>
           </div>
         </div>
