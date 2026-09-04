@@ -7,7 +7,6 @@ import Dashboard from './components/Dashboard'
 import UploadNote from './components/UploadNote'
 import NotesList from './components/NotesList'
 import NoteView from './components/NoteView'
-import './App.css'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('token'))
