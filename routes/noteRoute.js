@@ -446,6 +446,7 @@ router.get('/ifps/get/:id', async(req,res,next)=>{
             return res.status(200).json({
                 success : true,
                 url : ipfsUrl(note.cid),
+                previewUrl: `/api/denote/ifps/preview/${note.cid}`,
                 note : note
             });
         }
@@ -458,6 +459,54 @@ router.get('/ifps/get/:id', async(req,res,next)=>{
         res.status(500).json({
             msg : "Failed"
         });
+    }
+});
+
+// Stream note file through our API so the browser can preview it in an iframe
+// (public IPFS gateways often block embedding).
+router.get('/ifps/preview/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const note = await Note.findOne({ cid: id });
+        if (!note) {
+            return res.status(404).json({
+                success: false,
+                msg: "Note doesn't exist"
+            });
+        }
+
+        const upstream = await axios.get(ipfsUrl(note.cid), {
+            responseType: 'stream',
+            timeout: 90000,
+            maxRedirects: 5,
+            validateStatus: (status) => status >= 200 && status < 400
+        });
+
+        const contentType = upstream.headers['content-type'] || 'application/pdf';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', 'inline');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        // Ensure this response can be framed by our frontend
+        res.removeHeader('X-Frame-Options');
+
+        upstream.data.on('error', (err) => {
+            console.log('IPFS stream error:', err.message);
+            if (!res.headersSent) {
+                res.status(502).json({ success: false, msg: 'Failed to stream file from IPFS' });
+            } else {
+                res.end();
+            }
+        });
+
+        upstream.data.pipe(res);
+    } catch (err) {
+        console.log(err);
+        if (!res.headersSent) {
+            res.status(502).json({
+                success: false,
+                msg: 'Failed to load preview from IPFS'
+            });
+        }
     }
 });
 

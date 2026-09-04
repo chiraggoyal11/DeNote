@@ -37,6 +37,8 @@ export const notesAPI = {
   queryNotes: (params) => api.get('/ifps/get', { params }),
   updateNote: (id, data) => api.put(`/ifps/update/${id}`, data),
   deleteNote: (ids) => api.delete('/ifps/delete', { data: { id: ids } }),
+  previewUrl: (cid) => `${API_URL}/ifps/preview/${cid}`,
 }
 
+export { API_URL }
 export default api
