@@ -48,7 +48,11 @@ const userSchema = new mongoose.Schema({
         cid: {
             type: String
         }
-    }]
+    }],
+    deletionScheduledAt: {
+        type: Date,
+        default: null
+    }
 });
 
 module.exports = mongoose.model('User', userSchema);

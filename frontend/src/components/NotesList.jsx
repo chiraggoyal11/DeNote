@@ -52,7 +52,6 @@ function NotesList({ onLogout }) {
           <h1 className="page-title">Browse notes</h1>
           <p className="page-sub">Filter by branch, semester, or subject, then open a note to preview.</p>
         </div>
-        <Link to="/upload" className="btn btn-inline">Upload note</Link>
       </section>
 
       <div className="filters">

@@ -20,7 +20,9 @@ function publicUser(user) {
         username: user.username,
         email: user.email || null,
         phone: user.phone || null,
-        authProvider: user.authProvider || 'local'
+        authProvider: user.authProvider || 'local',
+        hasPassword: Boolean(user.password),
+        deletionScheduledAt: user.deletionScheduledAt || null
     };
 }
 

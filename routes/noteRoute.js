@@ -14,6 +14,7 @@ const { generateOtp, hashOtp, verifyOtp, useHardcodedOtp, HARDCODED_OTP } = requ
 const { sendEmailOtp, sendSmsOtp } = require('../utils/notify');
 const { signUserToken, publicUser } = require('../utils/authTokens');
 const { ipfsUrl, fetchIpfsContent } = require('../utils/ipfs');
+const { scheduleDeletionDate, purgeIfDue } = require('../utils/accountDeletion');
 
 const memory=multer.memoryStorage();
 const upload=multer({memory: memory});
@@ -39,10 +40,25 @@ function isValidPhone(phone) {
 
 router.get('/', user_jwt, async (req, res, next) => {
     try {
-        const user = await User.findById(req.user.id).select('-password');
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                msg: "User not found."
+            });
+        }
+
+        if (await purgeIfDue(user)) {
+            return res.status(401).json({
+                success: false,
+                msg: "This account was deleted after the scheduled grace period.",
+                accountDeleted: true
+            });
+        }
+
         res.status(200).json({
             success: true,
-            user: user
+            user: publicUser(user)
         });
     } catch (error) {
         console.log(error);
@@ -153,6 +169,13 @@ router.post('/login' , async (req,res,next)=> {
             return res.status(400).json({
                 success: false,
                 msg: "Invalid username."
+            });
+        }
+
+        if (await purgeIfDue(user)) {
+            return res.status(400).json({
+                success: false,
+                msg: "This account was deleted after the scheduled grace period."
             });
         }
 
@@ -350,6 +373,10 @@ router.post('/auth/google', async (req, res) => {
             ]
         });
 
+        if (user && await purgeIfDue(user)) {
+            user = null;
+        }
+
         if (!user) {
             let username = name.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || `user_${googleId.slice(0, 8)}`;
             const base = username;
@@ -383,6 +410,139 @@ router.post('/auth/google', async (req, res) => {
         res.status(401).json({
             success: false,
             msg: "Google authentication failed."
+        });
+    }
+});
+
+router.post('/account/schedule-deletion', user_jwt, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                msg: "User not found."
+            });
+        }
+
+        if (await purgeIfDue(user)) {
+            return res.status(401).json({
+                success: false,
+                msg: "This account was deleted after the scheduled grace period.",
+                accountDeleted: true
+            });
+        }
+
+        const { password, credential, confirmUsername } = req.body;
+
+        if (!confirmUsername || confirmUsername !== user.username) {
+            return res.status(400).json({
+                success: false,
+                msg: "Type your username to confirm account deletion."
+            });
+        }
+
+        let verified = false;
+
+        if (user.password && password) {
+            verified = await bcryptjs.compare(password, user.password);
+            if (!verified) {
+                return res.status(400).json({
+                    success: false,
+                    msg: "Incorrect password."
+                });
+            }
+        } else if (credential && googleClient && process.env.GOOGLE_CLIENT_ID) {
+            try {
+                const ticket = await googleClient.verifyIdToken({
+                    idToken: credential,
+                    audience: process.env.GOOGLE_CLIENT_ID
+                });
+                const payload = ticket.getPayload();
+                const googleId = payload.sub;
+                const email = normalizeEmail(payload.email);
+                verified = Boolean(
+                    (user.googleId && user.googleId === googleId) ||
+                    (user.email && email && user.email === email)
+                );
+            } catch (err) {
+                return res.status(400).json({
+                    success: false,
+                    msg: "Google verification failed."
+                });
+            }
+            if (!verified) {
+                return res.status(400).json({
+                    success: false,
+                    msg: "Google account does not match this profile."
+                });
+            }
+        } else if (user.password) {
+            return res.status(400).json({
+                success: false,
+                msg: "Password is required to delete this account."
+            });
+        } else {
+            return res.status(400).json({
+                success: false,
+                msg: "Confirm with Google sign-in to delete this account."
+            });
+        }
+
+        user.deletionScheduledAt = scheduleDeletionDate();
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            msg: "Account scheduled for deletion in 30 days. You can cancel anytime before then.",
+            user: publicUser(user)
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({
+            success: false,
+            msg: "Failed to schedule account deletion"
+        });
+    }
+});
+
+router.post('/account/cancel-deletion', user_jwt, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                msg: "User not found."
+            });
+        }
+
+        if (await purgeIfDue(user)) {
+            return res.status(401).json({
+                success: false,
+                msg: "This account was deleted after the scheduled grace period.",
+                accountDeleted: true
+            });
+        }
+
+        if (!user.deletionScheduledAt) {
+            return res.status(400).json({
+                success: false,
+                msg: "No deletion is scheduled for this account."
+            });
+        }
+
+        user.deletionScheduledAt = null;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            msg: "Account deletion cancelled.",
+            user: publicUser(user)
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({
+            success: false,
+            msg: "Failed to cancel account deletion"
         });
     }
 });

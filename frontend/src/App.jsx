@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard'
 import UploadNote from './components/UploadNote'
 import NotesList from './components/NotesList'
 import NoteView from './components/NoteView'
+import Profile from './components/Profile'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('token'))
@@ -31,33 +32,37 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
-          <Route 
-            path="/login" 
-            element={!isAuthenticated ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} 
+          <Route
+            path="/login"
+            element={!isAuthenticated ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />}
           />
-          <Route 
-            path="/register" 
-            element={!isAuthenticated ? <Register onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />} 
+          <Route
+            path="/register"
+            element={!isAuthenticated ? <Register onLogin={handleLogin} /> : <Navigate to="/dashboard" replace />}
           />
-          <Route 
-            path="/forgot-password" 
-            element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" replace />} 
+          <Route
+            path="/forgot-password"
+            element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" replace />}
           />
-          <Route 
-            path="/dashboard" 
-            element={isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" replace />} 
+          <Route
+            path="/dashboard"
+            element={isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" replace />}
           />
-          <Route 
-            path="/upload" 
-            element={isAuthenticated ? <UploadNote onLogout={handleLogout} /> : <Navigate to="/login" replace />} 
+          <Route
+            path="/upload"
+            element={isAuthenticated ? <UploadNote onLogout={handleLogout} /> : <Navigate to="/login" replace />}
           />
-          <Route 
-            path="/notes" 
-            element={isAuthenticated ? <NotesList onLogout={handleLogout} /> : <Navigate to="/login" replace />} 
+          <Route
+            path="/notes"
+            element={isAuthenticated ? <NotesList onLogout={handleLogout} /> : <Navigate to="/login" replace />}
           />
-          <Route 
-            path="/note/:cid" 
-            element={isAuthenticated ? <NoteView onLogout={handleLogout} /> : <Navigate to="/login" replace />} 
+          <Route
+            path="/note/:cid"
+            element={isAuthenticated ? <NoteView onLogout={handleLogout} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/profile"
+            element={isAuthenticated ? <Profile onLogout={handleLogout} /> : <Navigate to="/login" replace />}
           />
           <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
         </Routes>
