@@ -13,6 +13,7 @@ const { OAuth2Client } = require('google-auth-library');
 const { generateOtp, hashOtp, verifyOtp, useHardcodedOtp, HARDCODED_OTP } = require('../utils/otp');
 const { sendEmailOtp, sendSmsOtp } = require('../utils/notify');
 const { signUserToken, publicUser } = require('../utils/authTokens');
+const { ipfsUrl } = require('../utils/ipfs');
 
 const memory=multer.memoryStorage();
 const upload=multer({memory: memory});
@@ -422,7 +423,7 @@ router.post('/ifps/upload', upload.single('File_Note') , async(req,res,next)=>{
                 success: true,
                 msg : "Notes Uploaded.",
                 cid: response.data.IpfsHash,
-                url: `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`
+                url: ipfsUrl(response.data.IpfsHash)
             });
         }  else {
             res.status(401).json({
@@ -444,7 +445,7 @@ router.get('/ifps/get/:id', async(req,res,next)=>{
         if(note){
             return res.status(200).json({
                 success : true,
-                url : `https://gateway.pinata.cloud/ipfs/${note.cid}`,
+                url : ipfsUrl(note.cid),
                 note : note
             });
         }
@@ -487,7 +488,7 @@ router.get('/ifps/get',async(req,res,next)=>{
         const note=await Note.find(queryObject);
         if(note){
             for(const n of note){
-                n.fileUrl=`https://gateway.pinata.cloud/ipfs/${n.cid}`
+                n.fileUrl=ipfsUrl(n.cid)
             }  
             res.status(200).json({
                 success : true,

@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { notesAPI } from '../api'
 
+const IPFS_GATEWAY = (import.meta.env.VITE_IPFS_GATEWAY || 'https://ipfs.io/ipfs/').replace(/\/?$/, '/')
+
 function NoteView({ onLogout }) {
   const { cid } = useParams()
   const [note, setNote] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [previewError, setPreviewError] = useState(false)
   const [rating, setRating] = useState(0)
   const navigate = useNavigate()
 
@@ -17,10 +20,12 @@ function NoteView({ onLogout }) {
   const fetchNote = async () => {
     try {
       const response = await notesAPI.getNote(cid)
-      console.log('Note data:', response.data)
-      // Backend returns { note: {...}, url: ... }
       setNote(response.data.note)
       setRating(response.data.note?.rating || 0)
+      // Prefer URL returned by backend when available
+      if (response.data.url) {
+        setNote((prev) => ({ ...response.data.note, fileUrl: response.data.url }))
+      }
     } catch (err) {
       setError('Failed to fetch note details')
       console.error(err)
@@ -35,7 +40,6 @@ function NoteView({ onLogout }) {
       return
     }
     try {
-      // Backend expects MongoDB _id, not cid
       await notesAPI.updateNote(note._id, { rating })
       alert('Rating updated successfully!')
       fetchNote()
@@ -54,7 +58,6 @@ function NoteView({ onLogout }) {
     }
 
     try {
-      // Backend expects array of MongoDB _id
       await notesAPI.deleteNote([note._id])
       alert('Note deleted successfully!')
       navigate('/notes')
@@ -64,7 +67,14 @@ function NoteView({ onLogout }) {
     }
   }
 
-  const ipfsGatewayUrl = `https://gateway.pinata.cloud/ipfs/${cid}`
+  const ipfsGatewayUrl = note?.fileUrl || `${IPFS_GATEWAY}${cid}`
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    if (onLogout) onLogout()
+    window.location.href = '/login'
+  }
 
   if (loading) {
     return <div className="container">Loading...</div>
@@ -83,11 +93,11 @@ function NoteView({ onLogout }) {
     <div className="container">
       <nav className="navbar">
         <h1>📚 DeNote</h1>
-        <div>
+        <div className="navbar-links">
           <Link to="/dashboard">Dashboard</Link>
           <Link to="/upload">Upload Note</Link>
           <Link to="/notes">Browse Notes</Link>
-          <button onClick={onLogout} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
+          <button type="button" onClick={handleLogout} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
             Logout
           </button>
         </div>
@@ -118,17 +128,23 @@ function NoteView({ onLogout }) {
                 onChange={(e) => setRating(parseInt(e.target.value) || 0)}
                 style={{ width: '80px' }}
               />
-              <button onClick={handleRatingUpdate} className="btn">
+              <button type="button" onClick={handleRatingUpdate} className="btn">
                 Update Rating
               </button>
             </div>
           </div>
 
-          <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
-            <a href={ipfsGatewayUrl} target="_blank" rel="noopener noreferrer">
-              <button className="btn">📄 View on IPFS</button>
+          <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <a
+              className="btn"
+              href={ipfsGatewayUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'inline-block', textAlign: 'center', textDecoration: 'none' }}
+            >
+              📄 View on IPFS
             </a>
-            <button onClick={handleDelete} className="btn btn-secondary" style={{ background: '#ff6b6b' }}>
+            <button type="button" onClick={handleDelete} className="btn btn-secondary" style={{ background: '#ff6b6b' }}>
               🗑️ Delete Note
             </button>
           </div>
@@ -136,17 +152,25 @@ function NoteView({ onLogout }) {
 
         <div style={{ marginTop: '2rem' }}>
           <h3>Preview</h3>
-          <iframe
-            src={ipfsGatewayUrl}
-            style={{
-              width: '100%',
-              height: '600px',
-              border: '1px solid #ccc',
-              borderRadius: '8px',
-              marginTop: '1rem'
-            }}
-            title="Note Preview"
-          />
+          {previewError ? (
+            <div className="error" style={{ marginTop: '1rem' }}>
+              Preview could not be embedded. Use <strong>View on IPFS</strong> to open the file.
+            </div>
+          ) : (
+            <iframe
+              src={ipfsGatewayUrl}
+              style={{
+                width: '100%',
+                height: '600px',
+                border: '1px solid #ccc',
+                borderRadius: '8px',
+                marginTop: '1rem',
+                background: '#fff'
+              }}
+              title="Note Preview"
+              onError={() => setPreviewError(true)}
+            />
+          )}
         </div>
       </div>
     </div>
