@@ -9,19 +9,16 @@ import NoteView from './components/NoteView'
 import './App.css'
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('token'))
 
   useEffect(() => {
     const token = localStorage.getItem('token')
-    console.log('App: Checking token on mount:', token ? 'Token exists' : 'No token')
     setIsAuthenticated(!!token)
   }, [])
 
   const handleLogin = (token) => {
-    console.log('App: handleLogin called with token:', token)
     localStorage.setItem('token', token)
     setIsAuthenticated(true)
-    console.log('App: isAuthenticated set to true')
   }
 
   const handleLogout = () => {
@@ -33,7 +30,6 @@ function App() {
   return (
     <Router>
       <div className="App">
-        {console.log('App render: isAuthenticated =', isAuthenticated)}
         <Routes>
           <Route 
             path="/login" 
