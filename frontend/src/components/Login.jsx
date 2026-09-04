@@ -23,15 +23,11 @@ function Login({ onLogin }) {
     e.preventDefault()
     setError('')
     setLoading(true)
-
     try {
       const response = await authAPI.login(formData)
       const { success, token, user, msg } = response.data
-      if (success && token) {
-        finishAuth(token, user)
-      } else {
-        setError(msg || 'No token received from server')
-      }
+      if (success && token) finishAuth(token, user)
+      else setError(msg || 'No token received from server')
     } catch (err) {
       setError(err.response?.data?.msg || 'Login failed. Please try again.')
     } finally {
@@ -58,33 +54,37 @@ function Login({ onLogin }) {
   }
 
   return (
-    <div className="auth-container">
-      <h2>📚 Login to DeNote</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Username</label>
-          <input type="text" name="username" value={formData.username} onChange={handleChange} required />
-        </div>
-        <div className="form-group">
-          <label>Password</label>
-          <input type="password" name="password" value={formData.password} onChange={handleChange} required />
-        </div>
-        {error && <div className="error">{error}</div>}
-        <button type="submit" className="btn" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
+    <div className="auth-shell">
+      <div className="auth-panel">
+        <p className="auth-brand">DeNote</p>
+        <p className="auth-lead">Sign in to upload and discover academic notes on IPFS.</p>
 
-      <p style={{ marginTop: '0.75rem' }}>
-        <Link to="/forgot-password" className="link">Forgot password?</Link>
-      </p>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="username">Username</label>
+            <input id="username" type="text" name="username" value={formData.username} onChange={handleChange} required autoComplete="username" />
+          </div>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input id="password" type="password" name="password" value={formData.password} onChange={handleChange} required autoComplete="current-password" />
+          </div>
+          {error && <div className="error">{error}</div>}
+          <button type="submit" className="btn" disabled={loading} style={{ marginTop: '0.5rem' }}>
+            {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
 
-      <div className="auth-divider"><span>or</span></div>
-      <GoogleSignIn onCredential={handleGoogle} disabled={loading} />
+        <p className="auth-footer" style={{ marginTop: '0.85rem' }}>
+          <Link to="/forgot-password" className="link">Forgot password?</Link>
+        </p>
 
-      <p style={{ marginTop: '1rem' }}>
-        Don't have an account? <Link to="/register" className="link">Register here</Link>
-      </p>
+        <div className="auth-divider"><span>or</span></div>
+        <GoogleSignIn onCredential={handleGoogle} disabled={loading} />
+
+        <p className="auth-footer">
+          New here? <Link to="/register" className="link">Create an account</Link>
+        </p>
+      </div>
     </div>
   )
 }

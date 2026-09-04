@@ -40,12 +40,10 @@ function ForgotPassword() {
     e.preventDefault()
     setError('')
     setMessage('')
-
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match')
       return
     }
-
     setLoading(true)
     try {
       const payload = {
@@ -64,66 +62,68 @@ function ForgotPassword() {
   }
 
   return (
-    <div className="auth-container">
-      <h2>🔑 Reset password</h2>
-      <p className="auth-hint">
-        Temporary: use OTP <strong>123456</strong> after requesting a reset (SendGrid/Twilio can be added later).
-      </p>
+    <div className="auth-shell">
+      <div className="auth-panel">
+        <p className="auth-brand">DeNote</p>
+        <p className="auth-lead">
+          Reset with the email or phone from registration. Temporary OTP: <strong>123456</strong>
+        </p>
 
-      {step === 1 ? (
-        <form onSubmit={handleSendOtp}>
-          <div className="form-group">
-            <label>Reset via</label>
-            <select value={channel} onChange={(e) => setChannel(e.target.value)}>
-              <option value="email">Email</option>
-              <option value="phone">Phone</option>
-            </select>
-          </div>
-          {channel === 'email' ? (
+        {step === 1 ? (
+          <form onSubmit={handleSendOtp}>
             <div className="form-group">
-              <label>Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <label htmlFor="channel">Reset via</label>
+              <select id="channel" value={channel} onChange={(e) => setChannel(e.target.value)}>
+                <option value="email">Email</option>
+                <option value="phone">Phone</option>
+              </select>
             </div>
-          ) : (
+            {channel === 'email' ? (
+              <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </div>
+            ) : (
+              <div className="form-group">
+                <label htmlFor="phone">Phone</label>
+                <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="+9198XXXXXXXX" />
+              </div>
+            )}
+            {error && <div className="error">{error}</div>}
+            {message && <div className="success">{message}</div>}
+            <button type="submit" className="btn" disabled={loading}>
+              {loading ? 'Checking…' : 'Continue'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleReset}>
             <div className="form-group">
-              <label>Phone</label>
-              <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="+9198XXXXXXXX" />
+              <label htmlFor="otp">OTP</label>
+              <input id="otp" type="text" value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength={6} />
             </div>
-          )}
-          {error && <div className="error">{error}</div>}
-          {message && <div className="success">{message}</div>}
-          <button type="submit" className="btn" disabled={loading}>
-            {loading ? 'Sending...' : 'Send OTP'}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={handleReset}>
-          <div className="form-group">
-            <label>OTP</label>
-            <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength={6} />
-          </div>
-          <div className="form-group">
-            <label>New password</label>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} />
-          </div>
-          <div className="form-group">
-            <label>Confirm new password</label>
-            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} />
-          </div>
-          {error && <div className="error">{error}</div>}
-          {message && <div className="success">{message}</div>}
-          <button type="submit" className="btn" disabled={loading}>
-            {loading ? 'Updating...' : 'Reset password'}
-          </button>
-          <button type="button" className="btn btn-secondary" style={{ marginTop: '0.75rem' }} onClick={() => setStep(1)}>
-            Back
-          </button>
-        </form>
-      )}
+            <div className="form-group">
+              <label htmlFor="newPassword">New password</label>
+              <input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} />
+            </div>
+            <div className="form-group">
+              <label htmlFor="confirmPassword">Confirm new password</label>
+              <input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} />
+            </div>
+            {error && <div className="error">{error}</div>}
+            {message && <div className="success">{message}</div>}
+            <button type="submit" className="btn" disabled={loading}>
+              {loading ? 'Updating…' : 'Update password'}
+            </button>
+            <button type="button" className="btn btn-secondary" style={{ marginTop: '0.65rem' }} onClick={() => setStep(1)}>
+              Back
+            </button>
+          </form>
+        )}
 
-      <p style={{ marginTop: '1rem' }}>
-        <Link to="/login" className="link">Back to login</Link>
-      </p>
+        <p className="auth-footer">
+          <Link to="/login" className="link">Back to sign in</Link>
+        </p>
+      </div>
     </div>
   )
 }

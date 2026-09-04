@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { notesAPI } from '../api'
+import AppNav from './AppNav'
 
 function UploadNote({ onLogout }) {
   const [formData, setFormData] = useState({
@@ -30,44 +31,32 @@ function UploadNote({ onLogout }) {
     setSuccess('')
 
     if (!file) {
-      setError('Please select a file to upload')
+      setError('Please select a PDF file to upload')
       return
     }
 
     setLoading(true)
-
     try {
       const data = new FormData()
-      data.append('File_Note', file)  // Changed from 'file' to 'File_Note'
+      data.append('File_Note', file)
       data.append('branch', formData.branch)
-      data.append('sem', formData.semester)  // Changed from 'semester' to 'sem'
+      data.append('sem', formData.semester)
       data.append('subject', formData.subject)
       data.append('title', formData.title)
-      data.append('uploader', 'Anonymous')  // Add uploader field
-      data.append('rating', '0')  // Add rating field
+      data.append('uploader', localStorage.getItem('username') || 'Anonymous')
+      data.append('rating', '0')
 
       const response = await notesAPI.upload(data)
-      setSuccess(`Note uploaded successfully! CID: ${response.data.cid}`)
-      
-      // Reset form
-      setFormData({
-        branch: '',
-        semester: '',
-        subject: '',
-        title: '',
-        description: ''
-      })
+      setSuccess(`Uploaded successfully. Opening your note…`)
+      setFormData({ branch: '', semester: '', subject: '', title: '', description: '' })
       setFile(null)
-      
-      // Reset file input
       e.target.reset()
-      
-      // Go to the uploaded note (preview), with Upload still available in nav
+
       const cid = response.data.cid
       setTimeout(() => {
         if (cid) navigate(`/note/${cid}`)
         else navigate('/notes')
-      }, 1200)
+      }, 900)
     } catch (err) {
       console.error('Upload error:', err)
       setError(err.response?.data?.msg || err.response?.data?.message || 'Upload failed. Please try again.')
@@ -77,95 +66,46 @@ function UploadNote({ onLogout }) {
   }
 
   return (
-    <div className="container">
-      <nav className="navbar">
-        <h1>📚 DeNote</h1>
-        <div className="navbar-links">
-          <Link to="/dashboard">Dashboard</Link>
-          <Link to="/upload">Upload Note</Link>
-          <Link to="/notes">Browse Notes</Link>
-          <button type="button" onClick={() => {
-            localStorage.removeItem('token')
-            localStorage.removeItem('username')
-            if (onLogout) onLogout()
-            window.location.href = '/login'
-          }} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
-            Logout
-          </button>
-        </div>
-      </nav>
+    <div className="container page-enter">
+      <AppNav onLogout={onLogout} />
 
-      <div className="auth-container" style={{ marginTop: '2rem', maxWidth: '600px' }}>
-        <h2>📤 Upload New Note</h2>
+      <section className="page-head">
+        <div>
+          <h1 className="page-title">Upload a note</h1>
+          <p className="page-sub">Add metadata and a PDF. The file is pinned to IPFS after upload.</p>
+        </div>
+      </section>
+
+      <div className="panel upload-form">
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Branch</label>
-            <input
-              type="text"
-              name="branch"
-              value={formData.branch}
-              onChange={handleChange}
-              placeholder="e.g., Computer Science"
-              required
-            />
+            <label htmlFor="branch">Branch</label>
+            <input id="branch" type="text" name="branch" value={formData.branch} onChange={handleChange} placeholder="e.g. Computer Science" required />
           </div>
           <div className="form-group">
-            <label>Semester</label>
-            <input
-              type="text"
-              name="semester"
-              value={formData.semester}
-              onChange={handleChange}
-              placeholder="e.g., 5"
-              required
-            />
+            <label htmlFor="semester">Semester</label>
+            <input id="semester" type="text" name="semester" value={formData.semester} onChange={handleChange} placeholder="e.g. 5" required />
           </div>
           <div className="form-group">
-            <label>Subject</label>
-            <input
-              type="text"
-              name="subject"
-              value={formData.subject}
-              onChange={handleChange}
-              placeholder="e.g., Data Structures"
-              required
-            />
+            <label htmlFor="subject">Subject</label>
+            <input id="subject" type="text" name="subject" value={formData.subject} onChange={handleChange} placeholder="e.g. Data Structures" required />
           </div>
           <div className="form-group">
-            <label>Title</label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="e.g., Binary Trees Notes"
-              required
-            />
+            <label htmlFor="title">Title</label>
+            <input id="title" type="text" name="title" value={formData.title} onChange={handleChange} placeholder="e.g. Binary Trees notes" required />
           </div>
           <div className="form-group">
-            <label>Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Brief description of the notes"
-              rows="3"
-              required
-            />
+            <label htmlFor="description">Description</label>
+            <textarea id="description" name="description" value={formData.description} onChange={handleChange} placeholder="Short description" rows="3" required />
           </div>
           <div className="form-group">
-            <label>File (PDF)</label>
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={handleFileChange}
-              required
-            />
+            <label htmlFor="file">PDF file</label>
+            <input id="file" type="file" accept=".pdf,application/pdf" onChange={handleFileChange} required />
           </div>
           {error && <div className="error">{error}</div>}
           {success && <div className="success">{success}</div>}
-          <button type="submit" className="btn" disabled={loading}>
-            {loading ? 'Uploading...' : 'Upload Note'}
+          <button type="submit" className="btn" disabled={loading} style={{ marginTop: '0.5rem' }}>
+            {loading ? 'Uploading…' : 'Upload to IPFS'}
           </button>
         </form>
       </div>
