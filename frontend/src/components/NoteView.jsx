@@ -9,7 +9,6 @@ function NoteView({ onLogout }) {
   const [note, setNote] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [previewError, setPreviewError] = useState(false)
   const [rating, setRating] = useState(0)
   const navigate = useNavigate()
 
@@ -20,12 +19,12 @@ function NoteView({ onLogout }) {
   const fetchNote = async () => {
     try {
       const response = await notesAPI.getNote(cid)
-      setNote(response.data.note)
-      setRating(response.data.note?.rating || 0)
-      // Prefer URL returned by backend when available
-      if (response.data.url) {
-        setNote((prev) => ({ ...response.data.note, fileUrl: response.data.url }))
-      }
+      const noteData = response.data.note
+      setNote({
+        ...noteData,
+        fileUrl: response.data.url || noteData?.fileUrl
+      })
+      setRating(noteData?.rating || 0)
     } catch (err) {
       setError('Failed to fetch note details')
       console.error(err)
@@ -67,7 +66,9 @@ function NoteView({ onLogout }) {
     }
   }
 
-  const ipfsGatewayUrl = note?.fileUrl || `${IPFS_GATEWAY}${cid}`
+  const openUrl = note?.fileUrl || `${IPFS_GATEWAY}${cid}`
+  // Same-origin/API proxy preview so iframe is not blocked by IPFS gateway headers
+  const previewUrl = notesAPI.previewUrl(cid)
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -104,7 +105,12 @@ function NoteView({ onLogout }) {
       </nav>
 
       <div style={{ textAlign: 'left', marginTop: '2rem' }}>
-        <Link to="/notes" className="link">← Back to Notes</Link>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <Link to="/notes" className="link">← Back to Notes</Link>
+          <Link to="/upload" className="btn" style={{ width: 'auto', textDecoration: 'none' }}>
+            📤 Upload Note
+          </Link>
+        </div>
 
         <div className="note-details-card">
           <h2>{note?.title || 'Untitled Note'}</h2>
@@ -137,14 +143,14 @@ function NoteView({ onLogout }) {
           <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <a
               className="btn"
-              href={ipfsGatewayUrl}
+              href={openUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ display: 'inline-block', textAlign: 'center', textDecoration: 'none' }}
+              style={{ display: 'inline-block', textAlign: 'center', textDecoration: 'none', width: 'auto' }}
             >
               📄 View on IPFS
             </a>
-            <button type="button" onClick={handleDelete} className="btn btn-secondary" style={{ background: '#ff6b6b' }}>
+            <button type="button" onClick={handleDelete} className="btn btn-secondary" style={{ background: '#ff6b6b', width: 'auto' }}>
               🗑️ Delete Note
             </button>
           </div>
@@ -152,25 +158,21 @@ function NoteView({ onLogout }) {
 
         <div style={{ marginTop: '2rem' }}>
           <h3>Preview</h3>
-          {previewError ? (
-            <div className="error" style={{ marginTop: '1rem' }}>
-              Preview could not be embedded. Use <strong>View on IPFS</strong> to open the file.
-            </div>
-          ) : (
-            <iframe
-              src={ipfsGatewayUrl}
-              style={{
-                width: '100%',
-                height: '600px',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                marginTop: '1rem',
-                background: '#fff'
-              }}
-              title="Note Preview"
-              onError={() => setPreviewError(true)}
-            />
-          )}
+          <p style={{ color: 'rgba(255,255,255,0.55)', marginTop: '0.5rem' }}>
+            If the preview stays blank, open the file with <strong>View on IPFS</strong>.
+          </p>
+          <iframe
+            src={previewUrl}
+            style={{
+              width: '100%',
+              height: '700px',
+              border: '1px solid #ccc',
+              borderRadius: '8px',
+              marginTop: '1rem',
+              background: '#fff'
+            }}
+            title="Note Preview"
+          />
         </div>
       </div>
     </div>

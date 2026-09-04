@@ -24,11 +24,7 @@ function NotesList({ onLogout }) {
       if (filters.semester) params.sem = filters.semester
       if (filters.subject) params.subject = filters.subject
 
-      console.log('Fetching notes with params:', params)
       const response = await notesAPI.queryNotes(params)
-      console.log('Notes response:', response.data)
-      
-      // Backend returns { notes: [...] } not { rows: [...] }
       setNotes(response.data.notes || [])
     } catch (err) {
       setError('Failed to fetch notes')
@@ -51,24 +47,34 @@ function NotesList({ onLogout }) {
     navigate(`/note/${cid}`)
   }
 
-  console.log('Notes count:', notes.length)
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    if (onLogout) onLogout()
+    window.location.href = '/login'
+  }
 
   return (
     <div className="container">
       <nav className="navbar">
         <h1>📚 DeNote</h1>
-        <div>
+        <div className="navbar-links">
           <Link to="/dashboard">Dashboard</Link>
           <Link to="/upload">Upload Note</Link>
           <Link to="/notes">Browse Notes</Link>
-          <button onClick={onLogout} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
+          <button type="button" onClick={handleLogout} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
             Logout
           </button>
         </div>
       </nav>
 
       <div style={{ textAlign: 'left', marginTop: '2rem' }}>
-        <h2>📖 Browse Notes</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <h2 style={{ margin: 0 }}>📖 Browse Notes</h2>
+          <Link to="/upload" className="btn" style={{ width: 'auto', textDecoration: 'none' }}>
+            📤 Upload Note
+          </Link>
+        </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
           <input
@@ -95,7 +101,7 @@ function NotesList({ onLogout }) {
             onChange={handleFilterChange}
             style={{ flex: 1, minWidth: '200px' }}
           />
-          <button onClick={handleSearch} className="btn">
+          <button type="button" onClick={handleSearch} className="btn" style={{ width: 'auto' }}>
             Search
           </button>
         </div>
@@ -104,9 +110,14 @@ function NotesList({ onLogout }) {
         {error && <div className="error" style={{ marginTop: '2rem' }}>{error}</div>}
 
         {!loading && notes.length === 0 && (
-          <p style={{ marginTop: '2rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-            No notes found. Try adjusting your filters or upload the first note!
-          </p>
+          <div style={{ marginTop: '2rem' }}>
+            <p style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+              No notes found. Upload your first note to get started.
+            </p>
+            <Link to="/upload" className="btn" style={{ width: 'auto', display: 'inline-block', marginTop: '1rem', textDecoration: 'none' }}>
+              📤 Upload Note
+            </Link>
+          </div>
         )}
 
         <div className="notes-grid">
@@ -115,6 +126,11 @@ function NotesList({ onLogout }) {
               key={note._id || note.cid}
               className="note-card"
               onClick={() => handleNoteClick(note.cid)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleNoteClick(note.cid)
+              }}
             >
               <h3>{note.title || 'Untitled'}</h3>
               <p><strong>Subject:</strong> {note.subject || 'N/A'}</p>

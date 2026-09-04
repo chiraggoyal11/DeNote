@@ -62,8 +62,12 @@ function UploadNote({ onLogout }) {
       // Reset file input
       e.target.reset()
       
-      // Redirect after 2 seconds
-      setTimeout(() => navigate('/notes'), 2000)
+      // Go to the uploaded note (preview), with Upload still available in nav
+      const cid = response.data.cid
+      setTimeout(() => {
+        if (cid) navigate(`/note/${cid}`)
+        else navigate('/notes')
+      }, 1200)
     } catch (err) {
       console.error('Upload error:', err)
       setError(err.response?.data?.msg || err.response?.data?.message || 'Upload failed. Please try again.')
@@ -76,11 +80,16 @@ function UploadNote({ onLogout }) {
     <div className="container">
       <nav className="navbar">
         <h1>📚 DeNote</h1>
-        <div>
+        <div className="navbar-links">
           <Link to="/dashboard">Dashboard</Link>
           <Link to="/upload">Upload Note</Link>
           <Link to="/notes">Browse Notes</Link>
-          <button onClick={onLogout} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
+          <button type="button" onClick={() => {
+            localStorage.removeItem('token')
+            localStorage.removeItem('username')
+            if (onLogout) onLogout()
+            window.location.href = '/login'
+          }} className="btn btn-secondary" style={{ marginLeft: '1rem' }}>
             Logout
           </button>
         </div>
