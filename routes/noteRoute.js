@@ -200,11 +200,12 @@ router.post('/forgot-password', async (req, res) => {
         const query = email ? { email } : { phone };
         const user = await User.findOne(query);
 
-        // Same response whether or not the user exists (avoid account enumeration)
         if (!user) {
-            return res.status(200).json({
-                success: true,
-                msg: "If an account exists, an OTP has been sent."
+            return res.status(404).json({
+                success: false,
+                msg: email
+                    ? "No account found with this email."
+                    : "No account found with this phone number."
             });
         }
 
@@ -219,7 +220,7 @@ router.post('/forgot-password', async (req, res) => {
             console.log(`[OTP] Hardcoded mode — use OTP ${HARDCODED_OTP} for ${email || phone}`);
             return res.status(200).json({
                 success: true,
-                msg: `Use OTP ${HARDCODED_OTP} to reset your password (temporary hardcoded OTP).`,
+                msg: `Account verified. Use OTP ${HARDCODED_OTP} to reset your password.`,
                 channel: 'hardcoded',
                 otp: HARDCODED_OTP
             });
@@ -233,7 +234,9 @@ router.post('/forgot-password', async (req, res) => {
 
         res.status(200).json({
             success: true,
-            msg: "If an account exists, an OTP has been sent.",
+            msg: email
+                ? "OTP sent to your registered email."
+                : "OTP sent to your registered phone number.",
             channel: email ? 'email' : 'sms'
         });
     } catch (err) {
@@ -271,7 +274,9 @@ router.post('/reset-password', async (req, res) => {
         if (!user || !user.otpHash || user.otpPurpose !== 'reset_password') {
             return res.status(400).json({
                 success: false,
-                msg: "Invalid or expired OTP."
+                msg: !user
+                    ? (email ? "No account found with this email." : "No account found with this phone number.")
+                    : "Invalid or expired OTP. Request a new OTP first."
             });
         }
 
