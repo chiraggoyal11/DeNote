@@ -10,7 +10,7 @@ const axios=require('axios');
 const FormData=require('form-data');
 const fs=require('fs');
 const { OAuth2Client } = require('google-auth-library');
-const { generateOtp, hashOtp, verifyOtp } = require('../utils/otp');
+const { generateOtp, hashOtp, verifyOtp, useHardcodedOtp, HARDCODED_OTP } = require('../utils/otp');
 const { sendEmailOtp, sendSmsOtp } = require('../utils/notify');
 const { signUserToken, publicUser } = require('../utils/authTokens');
 
@@ -213,6 +213,17 @@ router.post('/forgot-password', async (req, res) => {
         user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
         user.otpPurpose = 'reset_password';
         await user.save();
+
+        // Hardcoded OTP mode: skip SendGrid/Twilio until they are configured later.
+        if (useHardcodedOtp) {
+            console.log(`[OTP] Hardcoded mode — use OTP ${HARDCODED_OTP} for ${email || phone}`);
+            return res.status(200).json({
+                success: true,
+                msg: `Use OTP ${HARDCODED_OTP} to reset your password (temporary hardcoded OTP).`,
+                channel: 'hardcoded',
+                otp: HARDCODED_OTP
+            });
+        }
 
         if (email) {
             await sendEmailOtp(email, otp);
