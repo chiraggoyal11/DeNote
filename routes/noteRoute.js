@@ -13,7 +13,7 @@ const { OAuth2Client } = require('google-auth-library');
 const { generateOtp, hashOtp, verifyOtp, useHardcodedOtp, HARDCODED_OTP } = require('../utils/otp');
 const { sendEmailOtp, sendSmsOtp } = require('../utils/notify');
 const { signUserToken, publicUser } = require('../utils/authTokens');
-const { ipfsUrl } = require('../utils/ipfs');
+const { ipfsUrl, fetchIpfsContent } = require('../utils/ipfs');
 
 const memory=multer.memoryStorage();
 const upload=multer({memory: memory});
@@ -463,7 +463,7 @@ router.get('/ifps/get/:id', async(req,res,next)=>{
 });
 
 // Stream note file through our API so the browser can preview it in an iframe
-// (public IPFS gateways often block embedding).
+// (public IPFS gateways often block embedding / intermittently time out).
 router.get('/ifps/preview/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -475,17 +475,16 @@ router.get('/ifps/preview/:id', async (req, res) => {
             });
         }
 
-        const upstream = await axios.get(ipfsUrl(note.cid), {
+        const { response: upstream, url: sourceUrl } = await fetchIpfsContent(note.cid, {
             responseType: 'stream',
-            timeout: 90000,
-            maxRedirects: 5,
-            validateStatus: (status) => status >= 200 && status < 400
+            timeout: 45000
         });
 
         const contentType = upstream.headers['content-type'] || 'application/pdf';
         res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Disposition', 'inline');
         res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('X-IPFS-Source', sourceUrl);
         // Ensure this response can be framed by our frontend
         res.removeHeader('X-Frame-Options');
 
@@ -500,7 +499,7 @@ router.get('/ifps/preview/:id', async (req, res) => {
 
         upstream.data.pipe(res);
     } catch (err) {
-        console.log(err);
+        console.log('IPFS preview failed:', err.message, err.details || '');
         if (!res.headersSent) {
             res.status(502).json({
                 success: false,
