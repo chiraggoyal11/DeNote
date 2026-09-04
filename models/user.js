@@ -1,21 +1,54 @@
-const mongoose=require('mongoose');
+const mongoose = require('mongoose');
 
-const userSchema=new mongoose.Schema({
-    username : {
-        type : String,
-        required : true
+const userSchema = new mongoose.Schema({
+    username: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true
     },
-    password : {
-        type : String,
-        required : true
+    email: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        sparse: true,
+        unique: true
     },
-    fav : [{
-        cid : {
-            type : String,
+    phone: {
+        type: String,
+        trim: true,
+        sparse: true,
+        unique: true
+    },
+    password: {
+        type: String,
+        // Not required for Google-only accounts
+        required: false
+    },
+    googleId: {
+        type: String,
+        sparse: true,
+        unique: true
+    },
+    authProvider: {
+        type: String,
+        enum: ['local', 'google'],
+        default: 'local'
+    },
+    otpHash: {
+        type: String
+    },
+    otpExpires: {
+        type: Date
+    },
+    otpPurpose: {
+        type: String
+    },
+    fav: [{
+        cid: {
+            type: String
         }
-    
     }]
-        
 });
 
-module.exports=mongoose.model('User',userSchema);
+module.exports = mongoose.model('User', userSchema);
