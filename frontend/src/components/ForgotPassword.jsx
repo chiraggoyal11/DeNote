@@ -23,7 +23,11 @@ function ForgotPassword() {
     try {
       const payload = channel === 'email' ? { email } : { phone }
       const response = await authAPI.forgotPassword(payload)
-      setMessage(response.data?.msg || 'OTP sent if the account exists.')
+      if (!response.data?.success) {
+        setError(response.data?.msg || 'No account found with this email or phone.')
+        return
+      }
+      setMessage(response.data?.msg || 'OTP sent to your registered contact.')
       setStep(2)
     } catch (err) {
       setError(err.response?.data?.msg || 'Failed to send OTP.')
