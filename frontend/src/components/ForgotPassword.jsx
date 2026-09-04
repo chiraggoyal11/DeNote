@@ -62,7 +62,9 @@ function ForgotPassword() {
   return (
     <div className="auth-container">
       <h2>🔑 Reset password</h2>
-      <p className="auth-hint">We’ll send a one-time code to your registered email or phone.</p>
+      <p className="auth-hint">
+        Temporary: use OTP <strong>123456</strong> after requesting a reset (SendGrid/Twilio can be added later).
+      </p>
 
       {step === 1 ? (
         <form onSubmit={handleSendOtp}>
