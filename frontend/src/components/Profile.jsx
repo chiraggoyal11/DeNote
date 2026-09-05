@@ -26,6 +26,7 @@ function cacheUserLocal(user) {
 
 function formFromUser(user) {
   return {
+    username: user?.username || '',
     displayName: user?.displayName || '',
     email: user?.email || '',
     phone: user?.phone || '',
@@ -34,6 +35,14 @@ function formFromUser(user) {
     branch: user?.branch || '',
     semester: user?.semester || ''
   }
+}
+
+function userFromResponse(response) {
+  return response?.data?.user ?? response?.user ?? null
+}
+
+function messageFromResponse(response, fallback) {
+  return response?.data?.msg ?? response?.msg ?? fallback
 }
 
 function Profile({ onLogout }) {
@@ -51,13 +60,13 @@ function Profile({ onLogout }) {
     setError('')
     try {
       const response = await authAPI.getProfile()
-      const next = response.data?.user
+      const next = userFromResponse(response)
       if (next) {
         setUser(next)
         setForm(formFromUser(next))
         cacheUserLocal(next)
       } else {
-        setError('Could not load profile details.')
+        setError('Could not load profile details. Check that the API URL is configured.')
       }
     } catch (err) {
       if (err.response?.data?.accountDeleted) {
@@ -104,6 +113,7 @@ function Profile({ onLogout }) {
     setBusy(true)
     try {
       const response = await authAPI.updateProfile({
+        username: form.username.trim(),
         displayName: form.displayName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
@@ -112,11 +122,16 @@ function Profile({ onLogout }) {
         branch: form.branch.trim(),
         semester: form.semester.trim()
       })
-      setUser(response.data.user)
-      setForm(formFromUser(response.data.user))
-      cacheUserLocal(response.data.user)
+      const updated = userFromResponse(response)
+      if (!updated) {
+        setError('Profile saved but the server returned an unexpected response.')
+        return
+      }
+      setUser(updated)
+      setForm(formFromUser(updated))
+      cacheUserLocal(updated)
       setEditing(false)
-      setSuccess(response.data.msg || 'Profile updated.')
+      setSuccess(messageFromResponse(response, 'Profile updated.'))
     } catch (err) {
       setError(err.response?.data?.msg || 'Could not update profile')
     } finally {
@@ -134,9 +149,12 @@ function Profile({ onLogout }) {
         confirmUsername,
         password: password || undefined
       })
-      setUser(response.data.user)
-      cacheUserLocal(response.data.user)
-      setSuccess(response.data.msg || 'Account scheduled for deletion.')
+      const updated = userFromResponse(response)
+      if (updated) {
+        setUser(updated)
+        cacheUserLocal(updated)
+      }
+      setSuccess(messageFromResponse(response, 'Account scheduled for deletion.'))
       setPassword('')
     } catch (err) {
       setError(err.response?.data?.msg || 'Could not schedule deletion')
@@ -154,9 +172,12 @@ function Profile({ onLogout }) {
         confirmUsername,
         credential
       })
-      setUser(response.data.user)
-      cacheUserLocal(response.data.user)
-      setSuccess(response.data.msg || 'Account scheduled for deletion.')
+      const updated = userFromResponse(response)
+      if (updated) {
+        setUser(updated)
+        cacheUserLocal(updated)
+      }
+      setSuccess(messageFromResponse(response, 'Account scheduled for deletion.'))
     } catch (err) {
       setError(err.response?.data?.msg || 'Could not schedule deletion')
     } finally {
@@ -170,9 +191,12 @@ function Profile({ onLogout }) {
     setBusy(true)
     try {
       const response = await authAPI.cancelDeletion()
-      setUser(response.data.user)
-      cacheUserLocal(response.data.user)
-      setSuccess(response.data.msg || 'Deletion cancelled.')
+      const updated = userFromResponse(response)
+      if (updated) {
+        setUser(updated)
+        cacheUserLocal(updated)
+      }
+      setSuccess(messageFromResponse(response, 'Deletion cancelled.'))
     } catch (err) {
       setError(err.response?.data?.msg || 'Could not cancel deletion')
     } finally {
@@ -266,7 +290,19 @@ function Profile({ onLogout }) {
               </label>
               <label>
                 Username
-                <input type="text" value={user?.username || ''} disabled readOnly />
+                <input
+                  type="text"
+                  name="username"
+                  value={form.username}
+                  onChange={handleFormChange}
+                  placeholder="username"
+                  minLength={3}
+                  maxLength={24}
+                  pattern="[A-Za-z0-9_]{3,24}"
+                  title="3–24 characters: letters, numbers, or underscore"
+                  required
+                  autoComplete="username"
+                />
               </label>
               <label>
                 Email
@@ -336,7 +372,7 @@ function Profile({ onLogout }) {
               </label>
             </div>
             <p className="auth-hint">
-              Username and sign-in method stay fixed. Keep email/phone current for recovery.
+              Username must be unique (letters, numbers, underscore). Keep email/phone current for recovery.
             </p>
             <div className="profile-edit-actions">
               <button type="submit" className="btn btn-inline" disabled={busy}>
