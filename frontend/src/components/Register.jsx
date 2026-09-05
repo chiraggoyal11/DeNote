@@ -21,6 +21,10 @@ function Register({ onLogin }) {
 
   const finishAuth = (token, user) => {
     if (user?.username) localStorage.setItem('username', user.username)
+    if (user?.displayName) localStorage.setItem('displayName', user.displayName)
+    else localStorage.removeItem('displayName')
+    if (user?.picture) localStorage.setItem('userPicture', user.picture)
+    else localStorage.removeItem('userPicture')
     onLogin(token)
     navigate('/dashboard', { replace: true })
   }

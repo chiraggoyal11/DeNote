@@ -35,6 +35,14 @@ const userSchema = new mongoose.Schema({
         enum: ['local', 'google'],
         default: 'local'
     },
+    displayName: {
+        type: String,
+        trim: true
+    },
+    picture: {
+        type: String,
+        trim: true
+    },
     otpHash: {
         type: String
     },
