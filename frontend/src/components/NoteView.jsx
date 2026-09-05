@@ -94,7 +94,6 @@ function NoteView({ onLogout }) {
           <Link to="/notes" className="link">← Back to browse</Link>
           <h1 className="page-title" style={{ marginTop: '0.65rem' }}>{note?.title || 'Untitled note'}</h1>
         </div>
-        <Link to="/upload" className="btn btn-inline">Upload note</Link>
       </div>
 
       <section className="panel">
