@@ -12,6 +12,8 @@ function AppNav({ onLogout }) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef(null)
   const username = localStorage.getItem('username') || 'User'
+  const displayName = localStorage.getItem('displayName') || username
+  const picture = localStorage.getItem('userPicture') || ''
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -33,21 +35,27 @@ function AppNav({ onLogout }) {
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('username')
+    localStorage.removeItem('displayName')
+    localStorage.removeItem('userPicture')
     if (onLogout) onLogout()
     window.location.href = '/login'
   }
 
   return (
     <header className="topbar">
-      <Link to="/dashboard" className="brand">
-        <span className="brand-mark" aria-hidden="true" />
-        <span className="brand-name">DeNote</span>
-      </Link>
-      <nav className="topbar-nav" aria-label="Main">
-        <NavLink to="/dashboard">Home</NavLink>
-        <NavLink to="/notes">Browse</NavLink>
-        <NavLink to="/upload" className="nav-cta">Upload</NavLink>
+      <div className="topbar-left">
+        <Link to="/dashboard" className="brand">
+          <span className="brand-mark" aria-hidden="true" />
+          <span className="brand-name">DeNote</span>
+        </Link>
+        <nav className="topbar-nav" aria-label="Main">
+          <NavLink to="/dashboard">Home</NavLink>
+          <NavLink to="/notes">Browse</NavLink>
+          <NavLink to="/upload" className="nav-cta">Upload</NavLink>
+        </nav>
+      </div>
 
+      <div className="topbar-right">
         <div className="profile-menu" ref={menuRef}>
           <button
             type="button"
@@ -57,15 +65,19 @@ function AppNav({ onLogout }) {
             aria-label="Account menu"
             onClick={() => setOpen((v) => !v)}
           >
-            <span className="profile-avatar" aria-hidden="true">
-              {initialsFrom(username)}
-            </span>
+            {picture ? (
+              <img className="profile-avatar-img" src={picture} alt="" referrerPolicy="no-referrer" />
+            ) : (
+              <span className="profile-avatar" aria-hidden="true">
+                {initialsFrom(displayName)}
+              </span>
+            )}
           </button>
           {open && (
             <div className="profile-dropdown" role="menu">
               <div className="profile-dropdown-head">
-                <span className="profile-dropdown-name">{username}</span>
-                <span className="profile-dropdown-hint">Account</span>
+                <span className="profile-dropdown-name">{displayName}</span>
+                <span className="profile-dropdown-hint">@{username}</span>
               </div>
               <Link
                 to="/profile"
@@ -74,14 +86,6 @@ function AppNav({ onLogout }) {
                 onClick={() => setOpen(false)}
               >
                 Profile details
-              </Link>
-              <Link
-                to="/profile#delete-account"
-                role="menuitem"
-                className="profile-dropdown-item profile-dropdown-danger"
-                onClick={() => setOpen(false)}
-              >
-                Delete account
               </Link>
               <button
                 type="button"
@@ -94,7 +98,7 @@ function AppNav({ onLogout }) {
             </div>
           )}
         </div>
-      </nav>
+      </div>
     </header>
   )
 }

@@ -364,7 +364,9 @@ router.post('/auth/google', async (req, res) => {
         const payload = ticket.getPayload();
         const googleId = payload.sub;
         const email = normalizeEmail(payload.email);
-        const name = payload.name || (email ? email.split('@')[0] : `user_${googleId.slice(0, 8)}`);
+        const displayName = payload.name || payload.given_name || (email ? email.split('@')[0] : `user_${googleId.slice(0, 8)}`);
+        const picture = payload.picture || '';
+        const name = displayName;
 
         let user = await User.findOne({
             $or: [
@@ -389,12 +391,16 @@ router.post('/auth/google', async (req, res) => {
                 username,
                 email: email || undefined,
                 googleId,
-                authProvider: 'google'
+                authProvider: 'google',
+                displayName,
+                picture: picture || undefined
             });
             await user.save();
         } else {
             if (!user.googleId) user.googleId = googleId;
-            if (email && !user.email) user.email = email;
+            if (email) user.email = email;
+            if (displayName) user.displayName = displayName;
+            if (picture) user.picture = picture;
             if (!user.authProvider) user.authProvider = 'google';
             await user.save();
         }

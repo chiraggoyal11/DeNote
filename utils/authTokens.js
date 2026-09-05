@@ -20,6 +20,8 @@ function publicUser(user) {
         username: user.username,
         email: user.email || null,
         phone: user.phone || null,
+        displayName: user.displayName || null,
+        picture: user.picture || null,
         authProvider: user.authProvider || 'local',
         hasPassword: Boolean(user.password),
         deletionScheduledAt: user.deletionScheduledAt || null

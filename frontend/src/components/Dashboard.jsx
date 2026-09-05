@@ -21,6 +21,12 @@ function Dashboard({ onLogout }) {
         if (response.data.user.username) {
           localStorage.setItem('username', response.data.user.username)
         }
+        if (response.data.user.displayName) {
+          localStorage.setItem('displayName', response.data.user.displayName)
+        }
+        if (response.data.user.picture) {
+          localStorage.setItem('userPicture', response.data.user.picture)
+        }
       }
     } catch (err) {
       console.error('Failed to fetch profile:', err)
@@ -43,7 +49,7 @@ function Dashboard({ onLogout }) {
 
       <section className="page-head">
         <div>
-          <h1 className="page-title">Welcome, {user?.username || 'User'}</h1>
+          <h1 className="page-title">Welcome, {user?.displayName || user?.username || 'User'}</h1>
           <p className="page-sub">
             Upload notes to IPFS or browse what the community has shared.
           </p>
