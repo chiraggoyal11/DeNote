@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { authAPI } from '../api'
 import AppNav from './AppNav'
 
@@ -48,10 +47,6 @@ function Dashboard({ onLogout }) {
           <p className="page-sub">
             Upload notes to IPFS or browse what the community has shared.
           </p>
-        </div>
-        <div className="action-row">
-          <Link to="/upload" className="btn btn-inline">Upload note</Link>
-          <Link to="/notes" className="btn btn-secondary btn-inline">Browse notes</Link>
         </div>
       </section>
 
