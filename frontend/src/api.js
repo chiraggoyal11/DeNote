@@ -27,6 +27,7 @@ export const authAPI = {
   forgotPassword: (payload) => api.post('/forgot-password', payload),
   resetPassword: (payload) => api.post('/reset-password', payload),
   googleAuth: (credential) => api.post('/auth/google', { credential }),
+  updateProfile: (payload) => api.put('/account/profile', payload),
   scheduleDeletion: (payload) => api.post('/account/schedule-deletion', payload),
   cancelDeletion: () => api.post('/account/cancel-deletion'),
 }

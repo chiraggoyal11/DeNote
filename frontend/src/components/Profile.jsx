@@ -24,11 +24,25 @@ function cacheUserLocal(user) {
   else localStorage.removeItem('userPicture')
 }
 
+function formFromUser(user) {
+  return {
+    displayName: user?.displayName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    bio: user?.bio || '',
+    college: user?.college || '',
+    branch: user?.branch || '',
+    semester: user?.semester || ''
+  }
+}
+
 function Profile({ onLogout }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState(formFromUser(null))
   const [confirmUsername, setConfirmUsername] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -40,6 +54,7 @@ function Profile({ onLogout }) {
       const next = response.data?.user
       if (next) {
         setUser(next)
+        setForm(formFromUser(next))
         cacheUserLocal(next)
       } else {
         setError('Could not load profile details.')
@@ -63,6 +78,51 @@ function Profile({ onLogout }) {
   useEffect(() => {
     loadProfile()
   }, [])
+
+  const startEditing = () => {
+    setForm(formFromUser(user))
+    setEditing(true)
+    setError('')
+    setSuccess('')
+  }
+
+  const cancelEditing = () => {
+    setForm(formFromUser(user))
+    setEditing(false)
+    setError('')
+  }
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+    setBusy(true)
+    try {
+      const response = await authAPI.updateProfile({
+        displayName: form.displayName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        bio: form.bio.trim(),
+        college: form.college.trim(),
+        branch: form.branch.trim(),
+        semester: form.semester.trim()
+      })
+      setUser(response.data.user)
+      setForm(formFromUser(response.data.user))
+      cacheUserLocal(response.data.user)
+      setEditing(false)
+      setSuccess(response.data.msg || 'Profile updated.')
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Could not update profile')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const handleScheduleDelete = async (e) => {
     e.preventDefault()
@@ -149,7 +209,27 @@ function Profile({ onLogout }) {
       {success && <div className="success">{success}</div>}
 
       <section className="section panel profile-panel">
-        <h2>Profile details</h2>
+        <div className="profile-panel-head">
+          <h2>Profile details</h2>
+          {!editing && (
+            <button
+              type="button"
+              className="profile-edit-btn"
+              onClick={startEditing}
+              aria-label="Edit profile"
+              title="Edit profile"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.33H5v-.92l9.06-9.06.92.92L5.92 19.58zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                />
+              </svg>
+              Edit
+            </button>
+          )}
+        </div>
+
         <div className="profile-identity">
           {user?.picture ? (
             <img
@@ -168,28 +248,150 @@ function Profile({ onLogout }) {
             <p className="profile-identity-meta">@{user?.username || 'user'}</p>
           </div>
         </div>
-        <dl className="profile-details">
-          <div>
-            <dt>Name</dt>
-            <dd>{user?.displayName || 'Not set'}</dd>
-          </div>
-          <div>
-            <dt>Username</dt>
-            <dd>{user?.username || '—'}</dd>
-          </div>
-          <div>
-            <dt>Email</dt>
-            <dd>{user?.email || 'Not set'}</dd>
-          </div>
-          <div>
-            <dt>Phone</dt>
-            <dd>{user?.phone || 'Not set'}</dd>
-          </div>
-          <div>
-            <dt>Sign-in</dt>
-            <dd>{isGoogle ? 'Google' : 'Username & password'}</dd>
-          </div>
-        </dl>
+
+        {editing ? (
+          <form className="profile-edit-form" onSubmit={handleSaveProfile}>
+            <div className="profile-edit-grid">
+              <label>
+                Display name
+                <input
+                  type="text"
+                  name="displayName"
+                  value={form.displayName}
+                  onChange={handleFormChange}
+                  placeholder="Your name"
+                  maxLength={60}
+                  autoComplete="name"
+                />
+              </label>
+              <label>
+                Username
+                <input type="text" value={user?.username || ''} disabled readOnly />
+              </label>
+              <label>
+                Email
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleFormChange}
+                  placeholder="you@college.edu"
+                  autoComplete="email"
+                />
+              </label>
+              <label>
+                Phone
+                <input
+                  type="tel"
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleFormChange}
+                  placeholder="+9198xxxxxxxx"
+                  autoComplete="tel"
+                />
+              </label>
+              <label>
+                College
+                <input
+                  type="text"
+                  name="college"
+                  value={form.college}
+                  onChange={handleFormChange}
+                  placeholder="College / university"
+                  maxLength={100}
+                />
+              </label>
+              <label>
+                Branch
+                <input
+                  type="text"
+                  name="branch"
+                  value={form.branch}
+                  onChange={handleFormChange}
+                  placeholder="e.g. Computer Science"
+                  maxLength={80}
+                />
+              </label>
+              <label>
+                Semester
+                <input
+                  type="text"
+                  name="semester"
+                  value={form.semester}
+                  onChange={handleFormChange}
+                  placeholder="e.g. 5"
+                  maxLength={40}
+                />
+              </label>
+              <label className="profile-edit-span">
+                Bio
+                <textarea
+                  name="bio"
+                  value={form.bio}
+                  onChange={handleFormChange}
+                  placeholder="Short intro about your courses or interests"
+                  rows={3}
+                  maxLength={280}
+                />
+              </label>
+            </div>
+            <p className="auth-hint">
+              Username and sign-in method stay fixed. Keep email/phone current for recovery.
+            </p>
+            <div className="profile-edit-actions">
+              <button type="submit" className="btn btn-inline" disabled={busy}>
+                {busy ? 'Saving…' : 'Save changes'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-inline"
+                onClick={cancelEditing}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <dl className="profile-details">
+            <div>
+              <dt>Name</dt>
+              <dd>{user?.displayName || 'Not set'}</dd>
+            </div>
+            <div>
+              <dt>Username</dt>
+              <dd>{user?.username || '—'}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>{user?.email || 'Not set'}</dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>{user?.phone || 'Not set'}</dd>
+            </div>
+            <div>
+              <dt>College</dt>
+              <dd>{user?.college || 'Not set'}</dd>
+            </div>
+            <div>
+              <dt>Branch</dt>
+              <dd>{user?.branch || 'Not set'}</dd>
+            </div>
+            <div>
+              <dt>Semester</dt>
+              <dd>{user?.semester || 'Not set'}</dd>
+            </div>
+            <div>
+              <dt>Bio</dt>
+              <dd>{user?.bio || 'Not set'}</dd>
+            </div>
+            <div>
+              <dt>Sign-in</dt>
+              <dd>{isGoogle ? 'Google' : 'Username & password'}</dd>
+            </div>
+          </dl>
+        )}
       </section>
 
       <section className="section panel profile-panel" id="delete-account">
