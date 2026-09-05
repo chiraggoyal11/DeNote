@@ -15,6 +15,15 @@ function formatDate(value) {
   }
 }
 
+function cacheUserLocal(user) {
+  if (!user) return
+  if (user.username) localStorage.setItem('username', user.username)
+  if (user.displayName) localStorage.setItem('displayName', user.displayName)
+  else localStorage.removeItem('displayName')
+  if (user.picture) localStorage.setItem('userPicture', user.picture)
+  else localStorage.removeItem('userPicture')
+}
+
 function Profile({ onLogout }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -31,12 +40,16 @@ function Profile({ onLogout }) {
       const next = response.data?.user
       if (next) {
         setUser(next)
-        if (next.username) localStorage.setItem('username', next.username)
+        cacheUserLocal(next)
+      } else {
+        setError('Could not load profile details.')
       }
     } catch (err) {
       if (err.response?.data?.accountDeleted) {
         localStorage.removeItem('token')
         localStorage.removeItem('username')
+        localStorage.removeItem('displayName')
+        localStorage.removeItem('userPicture')
         if (onLogout) onLogout()
         window.location.href = '/login'
         return
@@ -51,13 +64,6 @@ function Profile({ onLogout }) {
     loadProfile()
   }, [])
 
-  useEffect(() => {
-    if (window.location.hash === '#delete-account') {
-      const el = document.getElementById('delete-account')
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [loading])
-
   const handleScheduleDelete = async (e) => {
     e.preventDefault()
     setError('')
@@ -69,6 +75,7 @@ function Profile({ onLogout }) {
         password: password || undefined
       })
       setUser(response.data.user)
+      cacheUserLocal(response.data.user)
       setSuccess(response.data.msg || 'Account scheduled for deletion.')
       setPassword('')
     } catch (err) {
@@ -88,6 +95,7 @@ function Profile({ onLogout }) {
         credential
       })
       setUser(response.data.user)
+      cacheUserLocal(response.data.user)
       setSuccess(response.data.msg || 'Account scheduled for deletion.')
     } catch (err) {
       setError(err.response?.data?.msg || 'Could not schedule deletion')
@@ -103,6 +111,7 @@ function Profile({ onLogout }) {
     try {
       const response = await authAPI.cancelDeletion()
       setUser(response.data.user)
+      cacheUserLocal(response.data.user)
       setSuccess(response.data.msg || 'Deletion cancelled.')
     } catch (err) {
       setError(err.response?.data?.msg || 'Could not cancel deletion')
@@ -120,8 +129,10 @@ function Profile({ onLogout }) {
     )
   }
 
-  const needsPassword = user?.hasPassword
-  const canUseGoogle = user?.authProvider === 'google' || Boolean(user?.email)
+  const needsPassword = Boolean(user?.hasPassword)
+  const isGoogle = user?.authProvider === 'google'
+  const canUseGoogle = isGoogle || Boolean(user?.email)
+  const showName = user?.displayName || user?.username || '—'
 
   return (
     <div className="container page-enter">
@@ -139,7 +150,29 @@ function Profile({ onLogout }) {
 
       <section className="section panel profile-panel">
         <h2>Profile details</h2>
+        <div className="profile-identity">
+          {user?.picture ? (
+            <img
+              className="profile-photo"
+              src={user.picture}
+              alt=""
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="profile-photo profile-photo-fallback" aria-hidden="true">
+              {String(showName).slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <p className="profile-identity-name">{showName}</p>
+            <p className="profile-identity-meta">@{user?.username || 'user'}</p>
+          </div>
+        </div>
         <dl className="profile-details">
+          <div>
+            <dt>Name</dt>
+            <dd>{user?.displayName || 'Not set'}</dd>
+          </div>
           <div>
             <dt>Username</dt>
             <dd>{user?.username || '—'}</dd>
@@ -154,7 +187,7 @@ function Profile({ onLogout }) {
           </div>
           <div>
             <dt>Sign-in</dt>
-            <dd>{user?.authProvider === 'google' ? 'Google' : 'Username & password'}</dd>
+            <dd>{isGoogle ? 'Google' : 'Username & password'}</dd>
           </div>
         </dl>
       </section>
@@ -201,7 +234,7 @@ function Profile({ onLogout }) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Your password"
-                    required={!canUseGoogle || user?.authProvider !== 'google'}
+                    required={!isGoogle}
                     autoComplete="current-password"
                   />
                 </label>
@@ -224,7 +257,7 @@ function Profile({ onLogout }) {
                 )}
               </div>
             )}
-            {needsPassword && user?.authProvider === 'google' && (
+            {needsPassword && isGoogle && (
               <div style={{ marginTop: '1.25rem' }}>
                 <div className="auth-divider">or</div>
                 <p className="auth-hint">Confirm with Google instead of password.</p>
