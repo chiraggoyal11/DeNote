@@ -384,6 +384,90 @@ a {
   margin-top: 0.35rem;
 }
 
+.profile-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.profile-panel-head h2 {
+  margin: 0;
+}
+
+.profile-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+
+.profile-edit-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+.profile-edit-form {
+  margin-top: 0.75rem;
+}
+
+.profile-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+}
+
+.profile-edit-grid label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.profile-edit-span {
+  grid-column: 1 / -1;
+}
+
+.profile-edit-grid input,
+.profile-edit-grid textarea {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-solid);
+  resize: vertical;
+}
+
+.profile-edit-grid input:focus,
+.profile-edit-grid textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.profile-edit-grid input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: var(--paper-2);
+}
+
+.profile-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 .profile-details > div {
   display: grid;
   grid-template-columns: 7.5rem 1fr;
@@ -399,6 +483,7 @@ a {
 .profile-details dd {
   font-weight: 500;
   color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
 .delete-form {
@@ -1092,6 +1177,10 @@ a {
   .profile-details > div {
     grid-template-columns: 1fr;
     gap: 0.2rem;
+  }
+
+  .profile-edit-grid {
+    grid-template-columns: 1fr;
   }
 
   .home-hero {

@@ -22,6 +22,10 @@ function publicUser(user) {
         phone: user.phone || null,
         displayName: user.displayName || null,
         picture: user.picture || null,
+        bio: user.bio || null,
+        college: user.college || null,
+        branch: user.branch || null,
+        semester: user.semester || null,
         authProvider: user.authProvider || 'local',
         hasPassword: Boolean(user.password),
         deletionScheduledAt: user.deletionScheduledAt || null

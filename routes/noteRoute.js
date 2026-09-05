@@ -70,6 +70,160 @@ router.get('/', user_jwt, async (req, res, next) => {
 
 });
 
+router.put('/account/profile', user_jwt, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                msg: "User not found."
+            });
+        }
+
+        if (await purgeIfDue(user)) {
+            return res.status(401).json({
+                success: false,
+                msg: "This account was deleted after the scheduled grace period.",
+                accountDeleted: true
+            });
+        }
+
+        const displayName = req.body.displayName != null ? String(req.body.displayName).trim() : user.displayName;
+        const bio = req.body.bio != null ? String(req.body.bio).trim() : user.bio;
+        const college = req.body.college != null ? String(req.body.college).trim() : user.college;
+        const branch = req.body.branch != null ? String(req.body.branch).trim() : user.branch;
+        const semester = req.body.semester != null ? String(req.body.semester).trim() : user.semester;
+        const emailRaw = req.body.email != null ? normalizeEmail(req.body.email) : (user.email || '');
+        const phoneRaw = req.body.phone != null ? normalizePhone(req.body.phone) : (user.phone || '');
+
+        if (displayName && displayName.length > 60) {
+            return res.status(400).json({
+                success: false,
+                msg: "Display name must be 60 characters or fewer."
+            });
+        }
+
+        if (bio && bio.length > 280) {
+            return res.status(400).json({
+                success: false,
+                msg: "Bio must be 280 characters or fewer."
+            });
+        }
+
+        if (college && college.length > 100) {
+            return res.status(400).json({
+                success: false,
+                msg: "College name must be 100 characters or fewer."
+            });
+        }
+
+        if (branch && branch.length > 80) {
+            return res.status(400).json({
+                success: false,
+                msg: "Branch must be 80 characters or fewer."
+            });
+        }
+
+        if (semester && semester.length > 40) {
+            return res.status(400).json({
+                success: false,
+                msg: "Semester must be 40 characters or fewer."
+            });
+        }
+
+        if (emailRaw && !isValidEmail(emailRaw)) {
+            return res.status(400).json({
+                success: false,
+                msg: "Invalid email address."
+            });
+        }
+
+        if (phoneRaw && !isValidPhone(phoneRaw)) {
+            return res.status(400).json({
+                success: false,
+                msg: "Invalid phone number. Use digits with optional leading +."
+            });
+        }
+
+        if (emailRaw) {
+            const emailTaken = await User.findOne({
+                email: emailRaw,
+                _id: { $ne: user._id }
+            });
+            if (emailTaken) {
+                return res.status(400).json({
+                    success: false,
+                    msg: "Email is already used by another account."
+                });
+            }
+        }
+
+        if (phoneRaw) {
+            const phoneTaken = await User.findOne({
+                phone: phoneRaw,
+                _id: { $ne: user._id }
+            });
+            if (phoneTaken) {
+                return res.status(400).json({
+                    success: false,
+                    msg: "Phone number is already used by another account."
+                });
+            }
+        }
+
+        user.displayName = displayName || undefined;
+        user.bio = bio || undefined;
+        user.college = college || undefined;
+        user.branch = branch || undefined;
+        user.semester = semester || undefined;
+
+        if (emailRaw) user.email = emailRaw;
+        else user.email = undefined;
+
+        if (phoneRaw) user.phone = phoneRaw;
+        else user.phone = undefined;
+
+        await user.save();
+
+        // Ensure cleared unique fields are removed from the document.
+        const unset = {};
+        if (!emailRaw) unset.email = 1;
+        if (!phoneRaw) unset.phone = 1;
+        if (!displayName) unset.displayName = 1;
+        if (!bio) unset.bio = 1;
+        if (!college) unset.college = 1;
+        if (!branch) unset.branch = 1;
+        if (!semester) unset.semester = 1;
+        if (Object.keys(unset).length) {
+            await User.updateOne({ _id: user._id }, { $unset: unset });
+            const refreshed = await User.findById(user._id);
+            return res.status(200).json({
+                success: true,
+                msg: "Profile updated.",
+                user: publicUser(refreshed)
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            msg: "Profile updated.",
+            user: publicUser(user)
+        });
+    } catch (err) {
+        console.log(err);
+        if (err && err.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                msg: "Email or phone is already used by another account."
+            });
+        }
+        res.status(500).json({
+            success: false,
+            msg: "Failed to update profile"
+        });
+    }
+});
+
 router.post('/register', async (req,res,next) => {
     const { username , password, email, phone }=req.body;
 

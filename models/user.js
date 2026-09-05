@@ -43,6 +43,23 @@ const userSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    bio: {
+        type: String,
+        trim: true,
+        maxlength: 280
+    },
+    college: {
+        type: String,
+        trim: true
+    },
+    branch: {
+        type: String,
+        trim: true
+    },
+    semester: {
+        type: String,
+        trim: true
+    },
     otpHash: {
         type: String
     },
