@@ -38,6 +38,14 @@ function isValidPhone(phone) {
     return /^\+?[0-9]{8,15}$/.test(phone);
 }
 
+function normalizeUsername(username) {
+    return username ? String(username).trim() : '';
+}
+
+function isValidUsername(username) {
+    return /^[a-zA-Z0-9_]{3,24}$/.test(username);
+}
+
 router.get('/', user_jwt, async (req, res, next) => {
     try {
         const user = await User.findById(req.user.id);
@@ -88,6 +96,10 @@ router.put('/account/profile', user_jwt, async (req, res) => {
             });
         }
 
+        const previousUsername = user.username;
+        const usernameRaw = req.body.username != null
+            ? normalizeUsername(req.body.username)
+            : user.username;
         const displayName = req.body.displayName != null ? String(req.body.displayName).trim() : user.displayName;
         const bio = req.body.bio != null ? String(req.body.bio).trim() : user.bio;
         const college = req.body.college != null ? String(req.body.college).trim() : user.college;
@@ -95,6 +107,33 @@ router.put('/account/profile', user_jwt, async (req, res) => {
         const semester = req.body.semester != null ? String(req.body.semester).trim() : user.semester;
         const emailRaw = req.body.email != null ? normalizeEmail(req.body.email) : (user.email || '');
         const phoneRaw = req.body.phone != null ? normalizePhone(req.body.phone) : (user.phone || '');
+
+        if (!usernameRaw) {
+            return res.status(400).json({
+                success: false,
+                msg: "Username is required."
+            });
+        }
+
+        if (!isValidUsername(usernameRaw)) {
+            return res.status(400).json({
+                success: false,
+                msg: "Username must be 3–24 characters: letters, numbers, or underscore."
+            });
+        }
+
+        if (usernameRaw !== previousUsername) {
+            const usernameTaken = await User.findOne({
+                username: usernameRaw,
+                _id: { $ne: user._id }
+            });
+            if (usernameTaken) {
+                return res.status(400).json({
+                    success: false,
+                    msg: "Username is already taken."
+                });
+            }
+        }
 
         if (displayName && displayName.length > 60) {
             return res.status(400).json({
@@ -171,6 +210,7 @@ router.put('/account/profile', user_jwt, async (req, res) => {
             }
         }
 
+        user.username = usernameRaw;
         user.displayName = displayName || undefined;
         user.bio = bio || undefined;
         user.college = college || undefined;
@@ -184,6 +224,13 @@ router.put('/account/profile', user_jwt, async (req, res) => {
         else user.phone = undefined;
 
         await user.save();
+
+        if (usernameRaw !== previousUsername) {
+            await Note.updateMany(
+                { uploader: previousUsername },
+                { $set: { uploader: usernameRaw } }
+            );
+        }
 
         // Ensure cleared unique fields are removed from the document.
         const unset = {};
@@ -214,7 +261,7 @@ router.put('/account/profile', user_jwt, async (req, res) => {
         if (err && err.code === 11000) {
             return res.status(400).json({
                 success: false,
-                msg: "Email or phone is already used by another account."
+                msg: "Username, email, or phone is already used by another account."
             });
         }
         res.status(500).json({
