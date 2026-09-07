@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authAPI } from '../api'
 import GoogleSignIn from './GoogleSignIn'
+import { collegeEmailHint, formatAllowedEmailDomains } from '../utils/collegeEmail'
 
 function Login({ onLogin }) {
   const [formData, setFormData] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const domainLabel = formatAllowedEmailDomains()
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -62,6 +64,7 @@ function Login({ onLogin }) {
       <div className="auth-panel">
         <p className="auth-brand">DeNote</p>
         <p className="auth-lead">Sign in to upload and discover academic notes on IPFS.</p>
+        <p className="auth-hint">{collegeEmailHint()}</p>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -83,6 +86,7 @@ function Login({ onLogin }) {
         </p>
 
         <div className="auth-divider"><span>or</span></div>
+        <p className="auth-hint">Continue with Google using your {domainLabel} account.</p>
         <GoogleSignIn onCredential={handleGoogle} disabled={loading} />
 
         <p className="auth-footer">
