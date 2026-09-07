@@ -11,7 +11,13 @@ function scheduleDeletionDate(from = new Date()) {
 async function permanentlyDeleteUser(user) {
     if (!user) return;
 
-    const notes = await Note.find({ uploader: user.username });
+    const notes = await Note.find({
+        $or: [
+            { uploaderId: user._id },
+            { uploader: user.username }
+        ]
+    });
+
     for (const note of notes) {
         if (note.cid && process.env.PINATA) {
             try {
@@ -23,7 +29,15 @@ async function permanentlyDeleteUser(user) {
             }
         }
     }
-    await Note.deleteMany({ uploader: user.username });
+
+    await Note.deleteMany({
+        $or: [
+            { uploaderId: user._id },
+            { uploader: user.username }
+        ]
+    });
+
+    // Drop this user's favorites references from their own doc (user is deleted next)
     await User.deleteOne({ _id: user._id });
 }
 

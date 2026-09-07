@@ -10,7 +10,7 @@ function NoteView({ onLogout }) {
   const [note, setNote] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [rating, setRating] = useState(0)
+  const [busy, setBusy] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -18,6 +18,8 @@ function NoteView({ onLogout }) {
   }, [cid])
 
   const fetchNote = async () => {
+    setLoading(true)
+    setError('')
     try {
       const response = await notesAPI.getNote(cid)
       const noteData = response.data.note
@@ -25,7 +27,6 @@ function NoteView({ onLogout }) {
         ...noteData,
         fileUrl: response.data.url || noteData?.fileUrl
       })
-      setRating(noteData?.rating || 0)
     } catch (err) {
       setError('Failed to fetch note details')
       console.error(err)
@@ -34,30 +35,49 @@ function NoteView({ onLogout }) {
     }
   }
 
-  const handleRatingUpdate = async () => {
-    if (!note?._id) {
-      alert('Note ID not found')
-      return
-    }
+  const handleToggleLike = async () => {
+    if (!note?._id || busy) return
+    setBusy(true)
     try {
-      await notesAPI.updateNote(note._id, { rating })
-      alert('Rating updated successfully!')
-      fetchNote()
+      const res = await notesAPI.toggleLike(note._id)
+      setNote((prev) => ({
+        ...prev,
+        likedByMe: res.data.liked,
+        likeCount: res.data.likeCount
+      }))
     } catch (err) {
-      alert('Failed to update rating')
-      console.error(err)
+      alert(err.response?.data?.msg || 'Failed to update upvote')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleToggleFavorite = async () => {
+    if (!note?._id || busy) return
+    setBusy(true)
+    try {
+      const res = await notesAPI.toggleFavorite(note._id)
+      setNote((prev) => ({
+        ...prev,
+        favoritedByMe: res.data.favorited
+      }))
+    } catch (err) {
+      alert(err.response?.data?.msg || 'Failed to update favorite')
+    } finally {
+      setBusy(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this note?')) return
-    if (!note?._id) {
-      alert('Note ID not found')
+    if (!note?.isOwner) {
+      alert('Only the uploader can delete this note.')
       return
     }
+    if (!window.confirm('Delete this note?')) return
+    if (!note?._id) return
     try {
       await notesAPI.deleteNote([note._id])
-      navigate('/notes')
+      navigate('/my-uploads')
     } catch (err) {
       alert('Failed to delete note: ' + (err.response?.data?.msg || err.message))
       console.error(err)
@@ -101,35 +121,41 @@ function NoteView({ onLogout }) {
           <p><strong>Subject:</strong> {note?.subject || 'N/A'}</p>
           <p><strong>Branch:</strong> {note?.branch || 'N/A'}</p>
           <p><strong>Semester:</strong> {note?.sem || 'N/A'}</p>
-          <p><strong>Uploader:</strong> {note?.uploader || 'Anonymous'}</p>
+          <p><strong>Uploader:</strong> @{note?.uploader || 'Anonymous'}</p>
           <p><strong>CID:</strong> <code>{cid}</code></p>
         </div>
 
-        <div style={{ marginTop: '1.25rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', marginBottom: '0.65rem' }}>Rating {rating}/5</h3>
-          <div className="action-row" style={{ alignItems: 'center' }}>
-            <input
-              type="number"
-              min="0"
-              max="5"
-              value={rating}
-              onChange={(e) => setRating(parseInt(e.target.value) || 0)}
-              style={{ width: '88px', padding: '0.65rem', borderRadius: '10px', border: '1px solid var(--line)' }}
-            />
-            <button type="button" onClick={handleRatingUpdate} className="btn btn-inline">
-              Save rating
-            </button>
-          </div>
-        </div>
-
-        <div className="action-row" style={{ marginTop: '1.25rem' }}>
-          <a className="btn btn-inline" href={openUrl} target="_blank" rel="noopener noreferrer">
+        <div className="action-row" style={{ marginTop: '1.25rem', alignItems: 'center' }}>
+          <button
+            type="button"
+            className={`btn btn-inline ${note?.likedByMe ? '' : 'btn-secondary'}`}
+            onClick={handleToggleLike}
+            disabled={busy}
+          >
+            {note?.likedByMe ? '▲ Upvoted' : '▲ Upvote'} · {note?.likeCount || 0}
+          </button>
+          <button
+            type="button"
+            className={`btn btn-inline ${note?.favoritedByMe ? '' : 'btn-secondary'}`}
+            onClick={handleToggleFavorite}
+            disabled={busy}
+          >
+            {note?.favoritedByMe ? '★ Saved' : '☆ Save'}
+          </button>
+          <a className="btn btn-inline btn-secondary" href={openUrl} target="_blank" rel="noopener noreferrer">
             Open on IPFS
           </a>
-          <button type="button" onClick={handleDelete} className="btn btn-danger btn-inline">
-            Delete note
-          </button>
+          {note?.isOwner && (
+            <button type="button" onClick={handleDelete} className="btn btn-danger btn-inline">
+              Delete note
+            </button>
+          )}
         </div>
+        {!note?.isOwner && (
+          <p className="auth-hint" style={{ marginTop: '0.75rem' }}>
+            Only the uploader can delete this note.
+          </p>
+        )}
       </section>
 
       <section className="section">

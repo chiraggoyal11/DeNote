@@ -8,6 +8,8 @@ import UploadNote from './components/UploadNote'
 import NotesList from './components/NotesList'
 import NoteView from './components/NoteView'
 import Profile from './components/Profile'
+import MyUploads from './components/MyUploads'
+import Favorites from './components/Favorites'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('token'))
@@ -57,6 +59,14 @@ function App() {
           <Route
             path="/notes"
             element={isAuthenticated ? <NotesList onLogout={handleLogout} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/my-uploads"
+            element={isAuthenticated ? <MyUploads onLogout={handleLogout} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/favorites"
+            element={isAuthenticated ? <Favorites onLogout={handleLogout} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/note/:cid"

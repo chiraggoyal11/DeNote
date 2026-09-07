@@ -4,6 +4,7 @@ const User = require('../models/user');
 const Note = require('../models/note');
 const bcryptjs= require('bcryptjs');
 const user_jwt=require('../middleware/jwt');
+const optionalJwt = require('../middleware/optionalJwt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const axios=require('axios');
@@ -15,6 +16,12 @@ const { sendEmailOtp, sendSmsOtp } = require('../utils/notify');
 const { signUserToken, publicUser } = require('../utils/authTokens');
 const { ipfsUrl, fetchIpfsContent } = require('../utils/ipfs');
 const { scheduleDeletionDate, purgeIfDue } = require('../utils/accountDeletion');
+const {
+    isNoteOwner,
+    serializeNote,
+    loadFavoriteSets,
+    buildNotesQuery
+} = require('../utils/notesHelpers');
 
 const memory=multer.memoryStorage();
 const upload=multer({memory: memory});
@@ -227,8 +234,13 @@ router.put('/account/profile', user_jwt, async (req, res) => {
 
         if (usernameRaw !== previousUsername) {
             await Note.updateMany(
-                { uploader: previousUsername },
-                { $set: { uploader: usernameRaw } }
+                {
+                    $or: [
+                        { uploaderId: user._id },
+                        { uploader: previousUsername }
+                    ]
+                },
+                { $set: { uploader: usernameRaw, uploaderId: user._id } }
             );
         }
 
@@ -755,82 +767,137 @@ router.post('/account/cancel-deletion', user_jwt, async (req, res) => {
 });
 
 //IPFS
-router.post('/ifps/upload', upload.single('File_Note') , async(req,res,next)=>{
-    try {
-        const title=req.body.title;
-        const subject=req.body.subject;
-        const branch=req.body.branch;
-        const sem=req.body.sem;
-        const uploader=req.body.uploader;
-        const rating=req.body.rating;
-        let note=new Note();
-        note.title=title;
-        note.subject=subject;
-        note.branch=branch;
-        note.sem=sem;
-        note.uploader=uploader;
-        note.rating=rating;
-        if(req.file){
-            
-            const data=new FormData();
-            data.append('file',req.file.buffer, req.file.originalname);
-            const response= await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS',data,
-                {
-                    maxBodyLength : 'Infinity',
-                    headers: {
-                        'Content-Type': `multipart/form-data; boundary=${data._boundary}`,
-                        'Authorization': `Bearer ${process.env.PINATA}`
-                    }
-                }
-            );
-            
-            note.cid=response.data.IpfsHash;
-            await note.save();
-            res.status(200).json({
-                success: true,
-                msg : "Notes Uploaded.",
-                cid: response.data.IpfsHash,
-                url: ipfsUrl(response.data.IpfsHash)
-            });
-        }  else {
-            res.status(401).json({
-                success: false,
-                msg: "Choose File."
-            });
-        }  
+async function attachViewerContext(req) {
+    if (!req.user?.id) {
+        return { user: null, userId: null, username: null, favoriteCids: new Set(), favoriteNoteIds: new Set() };
+    }
+    const user = await User.findById(req.user.id);
+    if (!user) {
+        return { user: null, userId: null, username: null, favoriteCids: new Set(), favoriteNoteIds: new Set() };
+    }
+    const sets = await loadFavoriteSets(user);
+    return {
+        user,
+        userId: String(user._id),
+        username: user.username,
+        ...sets
+    };
+}
 
-    }catch(error) {
+function parsePagination(query) {
+    const page = Math.max(1, parseInt(query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(query.limit, 10) || 12));
+    const skip = (page - 1) * limit;
+    return { page, limit, skip };
+}
+
+function sortSpec(sort) {
+    if (sort === 'likes') return { likeCount: -1, uploadedAt: -1 };
+    return { uploadedAt: -1 };
+}
+
+router.post('/ifps/upload', user_jwt, upload.single('File_Note'), async (req, res) => {
+    try {
+        const owner = await User.findById(req.user.id);
+        if (!owner) {
+            return res.status(401).json({ success: false, msg: 'Auth. denied' });
+        }
+        if (await purgeIfDue(owner)) {
+            return res.status(401).json({
+                success: false,
+                msg: 'This account was deleted after the scheduled grace period.',
+                accountDeleted: true
+            });
+        }
+
+        const title = req.body.title;
+        const subject = req.body.subject;
+        const branch = req.body.branch;
+        const sem = req.body.sem;
+
+        if (!title || !subject || !branch || !sem) {
+            return res.status(400).json({
+                success: false,
+                msg: 'Title, subject, branch, and semester are required.'
+            });
+        }
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                msg: 'Choose File.'
+            });
+        }
+
+        const data = new FormData();
+        data.append('file', req.file.buffer, req.file.originalname);
+        const response = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', data, {
+            maxBodyLength: Infinity,
+            headers: {
+                'Content-Type': `multipart/form-data; boundary=${data._boundary}`,
+                Authorization: `Bearer ${process.env.PINATA}`
+            }
+        });
+
+        const note = new Note({
+            title,
+            subject,
+            branch,
+            sem,
+            uploader: owner.username,
+            uploaderId: owner._id,
+            cid: response.data.IpfsHash,
+            likeCount: 0,
+            likes: []
+        });
+        await note.save();
+
+        res.status(200).json({
+            success: true,
+            msg: 'Notes Uploaded.',
+            cid: response.data.IpfsHash,
+            url: ipfsUrl(response.data.IpfsHash),
+            note: serializeNote(note, { userId: String(owner._id), username: owner.username, isOwner: true })
+        });
+    } catch (error) {
         console.log(error);
+        res.status(500).json({
+            success: false,
+            msg: 'Upload failed.'
+        });
     }
 });
 
 //GetOne
-router.get('/ifps/get/:id', async(req,res,next)=>{
-    try{
-        const {id} = req.params;
-        const note = await Note.findOne({ cid : id});
-        if(note){
-            return res.status(200).json({
-                success : true,
-                url : ipfsUrl(note.cid),
-                previewUrl: `/api/denote/ifps/preview/${note.cid}`,
-                note : note
+router.get('/ifps/get/:id', optionalJwt, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const note = await Note.findOne({ cid: id });
+        if (!note) {
+            return res.status(400).json({
+                success: false,
+                msg: "Note doesn't exist"
             });
         }
-        res.status(400).json({
-            success : false,
-            msg : "Note doesn't exist"
+
+        const ctx = await attachViewerContext(req);
+        const serialized = serializeNote(note, ctx);
+        serialized.fileUrl = ipfsUrl(note.cid);
+
+        return res.status(200).json({
+            success: true,
+            url: ipfsUrl(note.cid),
+            previewUrl: `/api/denote/ifps/preview/${note.cid}`,
+            note: serialized
         });
-    }catch(err){
+    } catch (err) {
         console.log(err);
         res.status(500).json({
-            msg : "Failed"
+            msg: 'Failed'
         });
     }
 });
 
 // Stream note file through our API so the browser can preview it in an iframe
-// (public IPFS gateways often block embedding / intermittently time out).
 router.get('/ifps/preview/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -852,7 +919,6 @@ router.get('/ifps/preview/:id', async (req, res) => {
         res.setHeader('Content-Disposition', 'inline');
         res.setHeader('Cache-Control', 'public, max-age=3600');
         res.setHeader('X-IPFS-Source', sourceUrl);
-        // Ensure this response can be framed by our frontend
         res.removeHeader('X-Frame-Options');
 
         upstream.data.on('error', (err) => {
@@ -876,106 +942,288 @@ router.get('/ifps/preview/:id', async (req, res) => {
     }
 });
 
-//GetQuery
-router.get('/ifps/get',async(req,res,next)=>{
-    try{
-        const {title} = req.query;
-        const {branch} = req.query;
-        const {sem} = req.query;
-        const {subject} = req.query;
-        const {rating}=req.query;
-        const queryObject={};
-        if(title){
-            queryObject.title={$regex : title , $options : "i"}
-        }
-        if(branch){
-            queryObject.branch={$regex : branch , $options : "i"}
-        }
-        if(sem){
-            queryObject.sem={$regex : sem , $options : "i"}
-        }
-        if(subject){
-            queryObject.subject={$regex : subject , $options : "i"}
-        }
-        if(rating){
-            queryObject.rating={$regex : rating , $options : "i"}
-        }
-        const note=await Note.find(queryObject);
-        if(note){
-            for(const n of note){
-                n.fileUrl=ipfsUrl(n.cid)
-            }  
-            res.status(200).json({
-                success : true,
-                notes : note
-            }); 
-        }
-        
-    }catch(err){
+// Browse / search with pagination
+router.get('/ifps/get', optionalJwt, async (req, res) => {
+    try {
+        const ctx = await attachViewerContext(req);
+        const { page, limit, skip } = parsePagination(req.query);
+        const filter = buildNotesQuery({
+            ...req.query,
+            userId: ctx.userId,
+            username: ctx.username
+        });
+
+        const [total, notes] = await Promise.all([
+            Note.countDocuments(filter),
+            Note.find(filter)
+                .sort(sortSpec(req.query.sort))
+                .skip(skip)
+                .limit(limit)
+        ]);
+
+        const serialized = notes.map((n) => {
+            const item = serializeNote(n, ctx);
+            item.fileUrl = ipfsUrl(n.cid);
+            return item;
+        });
+
+        res.status(200).json({
+            success: true,
+            notes: serialized,
+            page,
+            limit,
+            total,
+            totalPages: Math.max(1, Math.ceil(total / limit))
+        });
+    } catch (err) {
         console.log(err);
         res.status(500).json({
-            msg: "Failed"
+            msg: 'Failed'
         });
     }
 });
 
-router.put('/ifps/update/:id', upload.single('File_Note') ,async(req,res,next) => {
+// My uploads
+router.get('/ifps/mine', user_jwt, async (req, res) => {
     try {
-        const {id}=req.params;
-        const note=await Note.findById(id);
-        if(!note){
-                return res.status(500).json({
-                    success:false,
-                    msg : "no note found to update"
-                });
-            }
-        if(req.file){
-            const data=new FormData();
-            data.append('file',req.file.buffer, req.file.originalname);
-            const response= await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS',data,
-                {
-                    maxBodyLength : 'Infinity',
-                    headers: {
-                        'Content-Type': `multipart/form-data; boundary=${data._boundary}`,
-                        'Authorization': `Bearer ${process.env.PINATA}`
-                    }
-                }
-            );
+        const ctx = await attachViewerContext(req);
+        if (!ctx.user) {
+            return res.status(401).json({ success: false, msg: 'Auth. denied' });
+        }
 
-            await axios.delete(`https://api.pinata.cloud/pinning/unpin/${note.cid}`, {
+        const { page, limit, skip } = parsePagination(req.query);
+        const filter = buildNotesQuery({
+            mine: '1',
+            userId: ctx.userId,
+            username: ctx.username,
+            q: req.query.q,
+            branch: req.query.branch,
+            sem: req.query.sem,
+            subject: req.query.subject
+        });
+
+        const [total, notes] = await Promise.all([
+            Note.countDocuments(filter),
+            Note.find(filter).sort({ uploadedAt: -1 }).skip(skip).limit(limit)
+        ]);
+
+        res.status(200).json({
+            success: true,
+            notes: notes.map((n) => {
+                const item = serializeNote(n, ctx);
+                item.fileUrl = ipfsUrl(n.cid);
+                return item;
+            }),
+            page,
+            limit,
+            total,
+            totalPages: Math.max(1, Math.ceil(total / limit))
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, msg: 'Failed to load your uploads' });
+    }
+});
+
+// Favorites list
+router.get('/ifps/favorites', user_jwt, async (req, res) => {
+    try {
+        const ctx = await attachViewerContext(req);
+        if (!ctx.user) {
+            return res.status(401).json({ success: false, msg: 'Auth. denied' });
+        }
+
+        const noteIds = (ctx.user.fav || []).map((f) => f.noteId).filter(Boolean);
+        const cids = (ctx.user.fav || []).map((f) => f.cid).filter(Boolean);
+
+        const filter = noteIds.length || cids.length
+            ? {
+                $or: [
+                    ...(noteIds.length ? [{ _id: { $in: noteIds } }] : []),
+                    ...(cids.length ? [{ cid: { $in: cids } }] : [])
+                ]
+            }
+            : { _id: { $in: [] } };
+
+        const { page, limit, skip } = parsePagination(req.query);
+        const [total, notes] = await Promise.all([
+            Note.countDocuments(filter),
+            Note.find(filter).sort({ uploadedAt: -1 }).skip(skip).limit(limit)
+        ]);
+
+        res.status(200).json({
+            success: true,
+            notes: notes.map((n) => {
+                const item = serializeNote(n, ctx);
+                item.fileUrl = ipfsUrl(n.cid);
+                item.favoritedByMe = true;
+                return item;
+            }),
+            page,
+            limit,
+            total,
+            totalPages: Math.max(1, Math.ceil(total / limit))
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, msg: 'Failed to load favorites' });
+    }
+});
+
+// Toggle favorite
+router.post('/ifps/:id/favorite', user_jwt, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(401).json({ success: false, msg: 'Auth. denied' });
+
+        const note = await Note.findById(req.params.id);
+        if (!note) {
+            return res.status(404).json({ success: false, msg: 'Note not found' });
+        }
+
+        user.fav = Array.isArray(user.fav) ? user.fav : [];
+        const existingIdx = user.fav.findIndex(
+            (f) =>
+                (f.noteId && String(f.noteId) === String(note._id)) ||
+                (f.cid && f.cid === note.cid)
+        );
+
+        let favorited;
+        if (existingIdx >= 0) {
+            user.fav.splice(existingIdx, 1);
+            favorited = false;
+        } else {
+            user.fav.push({ noteId: note._id, cid: note.cid });
+            favorited = true;
+        }
+        await user.save();
+
+        const ctx = {
+            userId: String(user._id),
+            username: user.username,
+            ...(await loadFavoriteSets(user))
+        };
+
+        res.status(200).json({
+            success: true,
+            favorited,
+            note: serializeNote(note, ctx),
+            favoriteCount: user.fav.length
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, msg: 'Failed to update favorite' });
+    }
+});
+
+// Toggle like / upvote
+router.post('/ifps/:id/like', user_jwt, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const note = await Note.findById(req.params.id);
+        if (!note) {
+            return res.status(404).json({ success: false, msg: 'Note not found' });
+        }
+
+        note.likes = Array.isArray(note.likes) ? note.likes : [];
+        const idx = note.likes.findIndex((id) => String(id) === String(userId));
+        let liked;
+        if (idx >= 0) {
+            note.likes.splice(idx, 1);
+            liked = false;
+        } else {
+            note.likes.push(userId);
+            liked = true;
+        }
+        note.likeCount = note.likes.length;
+        await note.save();
+
+        const ctx = await attachViewerContext(req);
+        res.status(200).json({
+            success: true,
+            liked,
+            likeCount: note.likeCount,
+            note: serializeNote(note, ctx)
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, msg: 'Failed to update like' });
+    }
+});
+
+router.put('/ifps/update/:id', user_jwt, upload.single('File_Note'), async (req, res) => {
+    try {
+        const owner = await User.findById(req.user.id);
+        if (!owner) return res.status(401).json({ success: false, msg: 'Auth. denied' });
+
+        const note = await Note.findById(req.params.id);
+        if (!note) {
+            return res.status(404).json({
+                success: false,
+                msg: 'no note found to update'
+            });
+        }
+
+        if (!isNoteOwner(note, owner._id, owner.username)) {
+            return res.status(403).json({
+                success: false,
+                msg: 'Only the uploader can edit this note.'
+            });
+        }
+
+        // Backfill ownership on legacy notes
+        if (!note.uploaderId) note.uploaderId = owner._id;
+
+        if (req.file) {
+            const data = new FormData();
+            data.append('file', req.file.buffer, req.file.originalname);
+            const response = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', data, {
+                maxBodyLength: Infinity,
                 headers: {
+                    'Content-Type': `multipart/form-data; boundary=${data._boundary}`,
                     Authorization: `Bearer ${process.env.PINATA}`
                 }
             });
 
+            try {
+                await axios.delete(`https://api.pinata.cloud/pinning/unpin/${note.cid}`, {
+                    headers: { Authorization: `Bearer ${process.env.PINATA}` }
+                });
+            } catch (unpinErr) {
+                console.log('Unpin previous CID failed:', unpinErr.message);
+            }
+
             note.cid = response.data.IpfsHash;
         }
-        
+
         note.title = req.body.title || note.title;
         note.subject = req.body.subject || note.subject;
         note.branch = req.body.branch || note.branch;
         note.sem = req.body.sem || note.sem;
-        note.uploader = req.body.uploader || note.uploader;
-        note.rating=req.body.rating || note.rating;
+        note.uploader = owner.username;
 
-        note.save();
-        
+        await note.save();
+
+        const ctx = await attachViewerContext(req);
         res.status(200).json({
-            success : true,
-            msg : "Updated"
-        })
+            success: true,
+            msg: 'Updated',
+            note: serializeNote(note, ctx)
+        });
     } catch (error) {
         console.log(error);
         res.status(500).json({
-            msg: "Failed."
+            msg: 'Failed.'
         });
     }
 });
 
-router.delete('/ifps/delete',async(req,res,next)=>{
+router.delete('/ifps/delete', user_jwt, async (req, res) => {
     try {
-        const {id}=req.body;
+        const owner = await User.findById(req.user.id);
+        if (!owner) return res.status(401).json({ success: false, msg: 'Auth. denied' });
 
+        const { id } = req.body;
         if (!Array.isArray(id) || id.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -983,38 +1231,49 @@ router.delete('/ifps/delete',async(req,res,next)=>{
             });
         }
 
-        let deleteErrors = [];
-        for(const i of id){
-            const note=await Note.findByIdAndDelete(i);
-            if(!note){
+        const deleteErrors = [];
+        for (const i of id) {
+            const note = await Note.findById(i);
+            if (!note) {
                 deleteErrors.push({ id: i, msg: "Note doesn't exist." });
                 continue;
             }
-            try {
-                await axios.delete(`https://api.pinata.cloud/pinning/unpin/${note.cid}`, {
-                    headers: {
-                    Authorization: `Bearer ${process.env.PINATA}`
-                    }
-                });
-            } catch (error) {
-                deleteErrors.push({ id: i, msg: `Failed to delete note ${note.title}` });
+            if (!isNoteOwner(note, owner._id, owner.username)) {
+                deleteErrors.push({ id: i, msg: 'Only the uploader can delete this note.' });
+                continue;
             }
+
+            try {
+                if (process.env.PINATA && note.cid) {
+                    await axios.delete(`https://api.pinata.cloud/pinning/unpin/${note.cid}`, {
+                        headers: { Authorization: `Bearer ${process.env.PINATA}` }
+                    });
+                }
+            } catch (error) {
+                console.log(`Unpin failed for ${note.cid}:`, error.message);
+            }
+
+            await Note.findByIdAndDelete(i);
+            await User.updateMany({}, { $pull: { fav: { noteId: note._id } } });
+            await User.updateMany({}, { $pull: { fav: { cid: note.cid } } });
         }
+
         if (deleteErrors.length > 0) {
-            return res.status(500).json({
+            return res.status(403).json({
                 success: false,
-                msg: "Some Notes failed to delete.",
+                msg: 'Some notes could not be deleted.',
                 errors: deleteErrors
             });
         }
+
         res.status(200).json({
-            success : true,
-            msg : "Notes deleted."
+            success: true,
+            msg: 'Notes deleted.'
         });
     } catch (error) {
         console.log(error);
         res.status(500).json({
-            msg: "Failed."
+            msg: 'Failed.'
         });
     }
 });

@@ -778,18 +778,31 @@ a {
 
 .note-card {
   text-align: left;
-  padding: 1.2rem 1.25rem;
+  padding: 1.05rem 1.15rem 0.9rem;
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--surface-solid);
-  cursor: pointer;
   transition: transform 0.22s var(--ease), border-color 0.22s var(--ease), box-shadow 0.22s var(--ease);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .note-card:hover {
   transform: translateY(-3px);
   border-color: rgba(11, 110, 79, 0.35);
   box-shadow: var(--shadow);
+}
+
+.note-card-main {
+  all: unset;
+  cursor: pointer;
+  display: block;
+}
+
+.note-card-main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .note-card h3 {
