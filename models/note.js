@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { RESOURCE_TYPE_VALUES, DEFAULT_RESOURCE_TYPE } = require('../utils/resourceTypes');
 
 const noteSchema = new mongoose.Schema({
     title: {
@@ -46,6 +47,70 @@ const noteSchema = new mongoose.Schema({
         maxlength: 500,
         default: ''
     },
+    resourceType: {
+        type: String,
+        enum: RESOURCE_TYPE_VALUES,
+        default: DEFAULT_RESOURCE_TYPE,
+        index: true
+    },
+    tags: {
+        type: [String],
+        default: [],
+        index: true
+    },
+    college: {
+        type: String,
+        trim: true,
+        default: '',
+        index: true
+    },
+    // Exact-file duplicate detection (SHA-256 hex)
+    fileHash: {
+        type: String,
+        index: true,
+        sparse: true
+    },
+    viewCount: {
+        type: Number,
+        default: 0,
+        index: true
+    },
+    downloadCount: {
+        type: Number,
+        default: 0,
+        index: true
+    },
+    // Role-gated verification (Phase 4 roles can flip this)
+    isVerified: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    verifiedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    verifiedAt: {
+        type: Date,
+        default: null
+    },
+    // Optional PYQ metadata
+    university: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    examYear: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    examType: {
+        type: String,
+        trim: true,
+        default: ''
+    },
     uploadedAt: {
         type: Date,
         default: Date.now,
@@ -66,8 +131,19 @@ const noteSchema = new mongoose.Schema({
     }
 });
 
-noteSchema.index({ title: 'text', subject: 'text', uploader: 'text', branch: 'text', description: 'text' });
+noteSchema.index({
+    title: 'text',
+    subject: 'text',
+    uploader: 'text',
+    branch: 'text',
+    description: 'text',
+    college: 'text',
+    tags: 'text'
+});
 noteSchema.index({ branch: 1, sem: 1, subject: 1, uploadedAt: -1 });
 noteSchema.index({ uploaderId: 1, uploadedAt: -1 });
+noteSchema.index({ resourceType: 1, uploadedAt: -1 });
+noteSchema.index({ resourceType: 1, likeCount: -1 });
+noteSchema.index({ fileHash: 1, uploadedAt: -1 });
 
 module.exports = mongoose.model('Note', noteSchema);

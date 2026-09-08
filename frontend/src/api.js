@@ -91,6 +91,7 @@ export const notesAPI = {
   updateNote: (id, data) => api.put(`/ifps/update/${id}`, data),
   deleteNote: (ids) => api.delete('/ifps/delete', { data: { id: ids } }),
   previewUrl: (cid) => `${API_URL}/ifps/preview/${cid}`,
+  resourceTypes: () => api.get('/meta/resource-types'),
 }
 
 export { API_URL }

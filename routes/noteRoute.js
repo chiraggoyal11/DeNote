@@ -20,14 +20,21 @@ const {
     isNoteOwner,
     serializeNote,
     loadFavoriteSets,
-    buildNotesQuery
+    buildNotesQuery,
+    sortSpec
 } = require('../utils/notesHelpers');
 const {
     isAllowedCollegeEmail,
     collegeEmailRequiredMsg,
     collegeEmailDeniedMsg
 } = require('../utils/collegeEmail');
+const {
+    RESOURCE_TYPES,
+    normalizeResourceType,
+    parseTags
+} = require('../utils/resourceTypes');
 const { authLimiter, otpLimiter, uploadLimiter } = require('../middleware/rateLimit');
+const crypto = require('crypto');
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
@@ -863,10 +870,16 @@ function parsePagination(query) {
     return { page, limit, skip };
 }
 
-function sortSpec(sort) {
-    if (sort === 'likes') return { likeCount: -1, uploadedAt: -1 };
-    return { uploadedAt: -1 };
+function truthyFlag(value) {
+    return value === true || value === 'true' || value === '1' || value === 'yes';
 }
+
+router.get('/meta/resource-types', (req, res) => {
+    res.status(200).json({
+        success: true,
+        resourceTypes: RESOURCE_TYPES
+    });
+});
 
 router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'), async (req, res) => {
     try {
@@ -889,6 +902,17 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
         const description = req.body.description
             ? String(req.body.description).trim().slice(0, 500)
             : '';
+        const resourceType = normalizeResourceType(req.body.resourceType);
+        const tags = parseTags(req.body.tags);
+        const college = req.body.college
+            ? String(req.body.college).trim().slice(0, 100)
+            : (owner.college || '').trim().slice(0, 100);
+        const university = req.body.university
+            ? String(req.body.university).trim().slice(0, 100)
+            : '';
+        const examYear = req.body.examYear ? String(req.body.examYear).trim().slice(0, 16) : '';
+        const examType = req.body.examType ? String(req.body.examType).trim().slice(0, 60) : '';
+        const forceDuplicate = truthyFlag(req.body.forceDuplicate);
 
         if (!title || !subject || !branch || !sem) {
             return res.status(400).json({
@@ -903,15 +927,40 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
             });
         }
 
-        const data = new FormData();
-        data.append('file', req.file.buffer, req.file.originalname);
-        const response = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', data, {
-            maxBodyLength: Infinity,
-            headers: {
-                'Content-Type': `multipart/form-data; boundary=${data._boundary}`,
-                Authorization: `Bearer ${process.env.PINATA}`
-            }
-        });
+        const fileHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+        const existingByHash = await Note.findOne({ fileHash }).sort({ uploadedAt: 1 });
+
+        if (existingByHash && !forceDuplicate) {
+            return res.status(409).json({
+                success: false,
+                duplicate: true,
+                msg: 'This exact file was already uploaded. Open the existing note, or confirm to publish again without re-pinning.',
+                existing: serializeNote(existingByHash, {
+                    userId: String(owner._id),
+                    username: owner.username
+                }),
+                fileHash
+            });
+        }
+
+        let cid;
+        let reusedCid = false;
+        if (existingByHash && forceDuplicate) {
+            // Same bytes — reuse CID to avoid burning Pinata quota
+            cid = existingByHash.cid;
+            reusedCid = true;
+        } else {
+            const data = new FormData();
+            data.append('file', req.file.buffer, req.file.originalname);
+            const response = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', data, {
+                maxBodyLength: Infinity,
+                headers: {
+                    'Content-Type': `multipart/form-data; boundary=${data._boundary}`,
+                    Authorization: `Bearer ${process.env.PINATA}`
+                }
+            });
+            cid = response.data.IpfsHash;
+        }
 
         const note = new Note({
             title,
@@ -919,20 +968,33 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
             branch,
             sem,
             description,
+            resourceType,
+            tags,
+            college,
+            university,
+            examYear,
+            examType,
+            fileHash,
             uploader: owner.username,
             uploaderId: owner._id,
-            cid: response.data.IpfsHash,
+            cid,
             likeCount: 0,
-            likes: []
+            likes: [],
+            viewCount: 0,
+            downloadCount: 0
         });
         await note.save();
 
         res.status(200).json({
             success: true,
-            msg: 'Notes Uploaded.',
-            cid: response.data.IpfsHash,
-            url: ipfsUrl(response.data.IpfsHash),
-            note: serializeNote(note, { userId: String(owner._id), username: owner.username, isOwner: true })
+            msg: reusedCid
+                ? 'Notes Uploaded (reused existing IPFS pin for identical file).'
+                : 'Notes Uploaded.',
+            cid,
+            reusedCid,
+            fileHash,
+            url: ipfsUrl(cid),
+            note: serializeNote(note, { userId: String(owner._id), username: owner.username })
         });
     } catch (error) {
         console.log(error);
@@ -947,7 +1009,11 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
 router.get('/ifps/get/:id', optionalJwt, async (req, res) => {
     try {
         const { id } = req.params;
-        const note = await Note.findOne({ cid: id });
+        const note = await Note.findOneAndUpdate(
+            { cid: id },
+            { $inc: { viewCount: 1 } },
+            { new: true }
+        );
         if (!note) {
             return res.status(400).json({
                 success: false,
@@ -984,6 +1050,9 @@ router.get('/ifps/preview/:id', async (req, res) => {
                 msg: "Note doesn't exist"
             });
         }
+
+        // Count preview/open as a download signal (write-light single $inc)
+        Note.updateOne({ _id: note._id }, { $inc: { downloadCount: 1 } }).catch(() => {});
 
         const { response: upstream, url: sourceUrl } = await fetchIpfsContent(note.cid, {
             responseType: 'stream',
@@ -1075,12 +1144,15 @@ router.get('/ifps/mine', user_jwt, async (req, res) => {
             q: req.query.q,
             branch: req.query.branch,
             sem: req.query.sem,
-            subject: req.query.subject
+            subject: req.query.subject,
+            resourceType: req.query.resourceType,
+            tag: req.query.tag,
+            tags: req.query.tags
         });
 
         const [total, notes] = await Promise.all([
             Note.countDocuments(filter),
-            Note.find(filter).sort({ uploadedAt: -1 }).skip(skip).limit(limit)
+            Note.find(filter).sort(sortSpec(req.query.sort)).skip(skip).limit(limit)
         ]);
 
         res.status(200).json({
@@ -1278,6 +1350,24 @@ router.put('/ifps/update/:id', user_jwt, uploadLimiter, upload.single('File_Note
         note.sem = req.body.sem || note.sem;
         if (typeof req.body.description === 'string') {
             note.description = req.body.description.trim().slice(0, 500);
+        }
+        if (req.body.resourceType) {
+            note.resourceType = normalizeResourceType(req.body.resourceType);
+        }
+        if (typeof req.body.tags === 'string' || Array.isArray(req.body.tags)) {
+            note.tags = parseTags(req.body.tags);
+        }
+        if (typeof req.body.college === 'string') {
+            note.college = req.body.college.trim().slice(0, 100);
+        }
+        if (typeof req.body.university === 'string') {
+            note.university = req.body.university.trim().slice(0, 100);
+        }
+        if (typeof req.body.examYear === 'string') {
+            note.examYear = req.body.examYear.trim().slice(0, 16);
+        }
+        if (typeof req.body.examType === 'string') {
+            note.examType = req.body.examType.trim().slice(0, 60);
         }
         note.uploader = owner.username;
 

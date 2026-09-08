@@ -112,18 +112,44 @@ function NoteView({ onLogout }) {
       <div className="page-head">
         <div>
           <Link to="/notes" className="link">← Back to browse</Link>
-          <h1 className="page-title" style={{ marginTop: '0.65rem' }}>{note?.title || 'Untitled note'}</h1>
+          <h1 className="page-title" style={{ marginTop: '0.65rem' }}>
+            {note?.isVerified ? <span className="verified-chip" title="Verified">✓ Verified</span> : null}
+            {' '}
+            {note?.title || 'Untitled note'}
+          </h1>
         </div>
       </div>
 
       <section className="panel">
         <div className="meta-grid">
+          <p><strong>Type:</strong> {note?.resourceTypeLabel || 'Notes'}</p>
           <p><strong>Subject:</strong> {note?.subject || 'N/A'}</p>
           <p><strong>Branch:</strong> {note?.branch || 'N/A'}</p>
           <p><strong>Semester:</strong> {note?.sem || 'N/A'}</p>
+          {note?.college ? <p><strong>College:</strong> {note.college}</p> : null}
           <p><strong>Uploader:</strong> @{note?.uploader || 'Anonymous'}</p>
+          <p><strong>Quality:</strong> {note?.qualityScore ?? 0}/100</p>
+          <p><strong>Views:</strong> {note?.viewCount || 0}</p>
           <p><strong>CID:</strong> <code>{cid}</code></p>
         </div>
+
+        {note?.qualityScoreExplanation ? (
+          <p className="auth-hint" style={{ marginTop: '0.75rem' }}>{note.qualityScoreExplanation}</p>
+        ) : null}
+
+        {Array.isArray(note?.tags) && note.tags.length > 0 && (
+          <p className="tag-row" style={{ marginTop: '0.75rem' }}>
+            {note.tags.map((t) => `#${t}`).join(' ')}
+          </p>
+        )}
+
+        {(note?.examYear || note?.examType || note?.university) && (
+          <div className="meta-grid" style={{ marginTop: '0.75rem' }}>
+            {note.university ? <p><strong>University:</strong> {note.university}</p> : null}
+            {note.examYear ? <p><strong>Year:</strong> {note.examYear}</p> : null}
+            {note.examType ? <p><strong>Exam:</strong> {note.examType}</p> : null}
+          </div>
+        )}
 
         {note?.description ? (
           <p className="note-description" style={{ marginTop: '1rem' }}>{note.description}</p>

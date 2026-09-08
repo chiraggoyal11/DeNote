@@ -1,4 +1,10 @@
 const mongoose = require('mongoose');
+const {
+    normalizeResourceType,
+    resourceTypeLabel,
+    computeQualityScore,
+    qualityScoreExplanation
+} = require('./resourceTypes');
 
 function viewerId(req) {
     return req.user?.id ? String(req.user.id) : null;
@@ -18,10 +24,13 @@ function serializeNote(note, { userId = null, username = null, favoriteCids = nu
     const likeCount = typeof doc.likeCount === 'number' ? doc.likeCount : likes.length;
     const cid = doc.cid;
     const noteId = String(doc._id);
+    const resourceType = normalizeResourceType(doc.resourceType);
 
     let favoritedByMe = false;
     if (favoriteNoteIds && favoriteNoteIds.has(noteId)) favoritedByMe = true;
     else if (favoriteCids && cid && favoriteCids.has(cid)) favoritedByMe = true;
+
+    const qualityScore = computeQualityScore(doc);
 
     return {
         _id: doc._id,
@@ -30,12 +39,26 @@ function serializeNote(note, { userId = null, username = null, favoriteCids = nu
         branch: doc.branch,
         sem: doc.sem,
         description: doc.description || '',
+        resourceType,
+        resourceTypeLabel: resourceTypeLabel(resourceType),
+        tags: Array.isArray(doc.tags) ? doc.tags : [],
+        college: doc.college || '',
+        university: doc.university || '',
+        examYear: doc.examYear || '',
+        examType: doc.examType || '',
         uploader: doc.uploader,
         uploaderId: doc.uploaderId || null,
         cid: doc.cid,
         fileUrl: doc.fileUrl || null,
+        fileHash: doc.fileHash || null,
         uploadedAt: doc.uploadedAt,
         likeCount,
+        viewCount: doc.viewCount || 0,
+        downloadCount: doc.downloadCount || 0,
+        isVerified: Boolean(doc.isVerified),
+        verifiedAt: doc.verifiedAt || null,
+        qualityScore,
+        qualityScoreExplanation: qualityScoreExplanation(doc),
         likedByMe: userId ? likes.includes(String(userId)) : false,
         favoritedByMe,
         isOwner: isNoteOwner(doc, userId, username)
@@ -66,7 +89,15 @@ function buildNotesQuery(query) {
         subject,
         uploader,
         mine,
-        userId
+        userId,
+        resourceType,
+        tag,
+        tags,
+        college,
+        university,
+        examYear,
+        examType,
+        verified
     } = query;
 
     const filter = {};
@@ -89,6 +120,33 @@ function buildNotesQuery(query) {
     if (sem) filter.sem = { $regex: escapeRegex(sem), $options: 'i' };
     if (subject) filter.subject = { $regex: escapeRegex(subject), $options: 'i' };
     if (title) filter.title = { $regex: escapeRegex(title), $options: 'i' };
+    if (college) filter.college = { $regex: escapeRegex(college), $options: 'i' };
+    if (university) filter.university = { $regex: escapeRegex(university), $options: 'i' };
+    if (examYear) filter.examYear = String(examYear).trim();
+    if (examType) filter.examType = { $regex: escapeRegex(examType), $options: 'i' };
+
+    if (resourceType && resourceType !== 'all') {
+        filter.resourceType = normalizeResourceType(resourceType);
+    }
+
+    const tagList = [];
+    if (tag) tagList.push(String(tag).trim().toLowerCase());
+    if (tags) {
+        String(tags)
+            .split(',')
+            .map((t) => t.trim().toLowerCase())
+            .filter(Boolean)
+            .forEach((t) => tagList.push(t));
+    }
+    if (tagList.length === 1) {
+        filter.tags = tagList[0];
+    } else if (tagList.length > 1) {
+        filter.tags = { $all: [...new Set(tagList)] };
+    }
+
+    if (verified === '1' || verified === 'true') {
+        filter.isVerified = true;
+    }
 
     if (q) {
         const rx = { $regex: escapeRegex(q), $options: 'i' };
@@ -98,7 +156,11 @@ function buildNotesQuery(query) {
             { uploader: rx },
             { branch: rx },
             { sem: rx },
-            { description: rx }
+            { description: rx },
+            { college: rx },
+            { tags: rx },
+            { university: rx },
+            { examType: rx }
         ];
         if (filter.$or) {
             filter.$and = [{ $or: filter.$or }, { $or: textOr }];
@@ -111,11 +173,36 @@ function buildNotesQuery(query) {
     return filter;
 }
 
+function sortSpec(sort) {
+    switch (String(sort || 'recent')) {
+        case 'likes':
+        case 'most_liked':
+            return { likeCount: -1, uploadedAt: -1 };
+        case 'views':
+        case 'most_viewed':
+            return { viewCount: -1, uploadedAt: -1 };
+        case 'downloads':
+        case 'most_downloaded':
+            return { downloadCount: -1, uploadedAt: -1 };
+        case 'quality':
+        case 'highest_rated':
+            // Approximate via likes+views until stored score exists
+            return { likeCount: -1, viewCount: -1, uploadedAt: -1 };
+        case 'oldest':
+            return { uploadedAt: 1 };
+        case 'recent':
+        case 'newest':
+        default:
+            return { uploadedAt: -1 };
+    }
+}
+
 module.exports = {
     viewerId,
     isNoteOwner,
     serializeNote,
     loadFavoriteSets,
     escapeRegex,
-    buildNotesQuery
+    buildNotesQuery,
+    sortSpec
 };

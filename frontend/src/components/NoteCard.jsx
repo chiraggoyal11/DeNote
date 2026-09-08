@@ -17,11 +17,21 @@ export function NoteCard({
   return (
     <article className="note-card">
       <button type="button" className="note-card-main" onClick={open}>
+        <div className="note-card-topline">
+          <span className="type-chip">{note.resourceTypeLabel || 'Notes'}</span>
+          {note.isVerified ? <span className="verified-chip" title="Verified">✓ Verified</span> : null}
+        </div>
         <h3>{note.title || 'Untitled'}</h3>
         <p><strong>Subject:</strong> {note.subject || 'N/A'}</p>
         <p><strong>Branch:</strong> {note.branch || 'N/A'}</p>
         <p><strong>Semester:</strong> {note.sem || 'N/A'}</p>
         <p><strong>Uploader:</strong> @{note.uploader || 'anon'}</p>
+        <p className="note-card-stats">
+          Quality {note.qualityScore ?? 0}/100 · {note.viewCount || 0} views · {note.likeCount || 0} upvotes
+        </p>
+        {Array.isArray(note.tags) && note.tags.length > 0 && (
+          <p className="tag-row">{note.tags.slice(0, 4).map((t) => `#${t}`).join(' ')}</p>
+        )}
         <span className="cid-chip">{note.cid?.substring(0, 18)}…</span>
       </button>
       <div className="note-card-actions">

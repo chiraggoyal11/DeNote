@@ -1365,3 +1365,61 @@ a {
   color: var(--muted);
   font-size: 0.92rem;
 }
+
+.note-card-topline {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.45rem;
+}
+
+.type-chip,
+.verified-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent, #1f6f5b) 12%, white);
+  color: var(--ink, #1a1a1a);
+}
+
+.verified-chip {
+  background: color-mix(in srgb, #1f6f5b 18%, white);
+  border-color: color-mix(in srgb, #1f6f5b 35%, white);
+  color: #145c4a;
+}
+
+.note-card-stats,
+.tag-row {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.duplicate-banner {
+  margin-top: 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, #b45309 35%, white);
+  background: color-mix(in srgb, #b45309 10%, white);
+  border-radius: 12px;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.duplicate-banner p {
+  margin: 0;
+  color: var(--ink, #1a1a1a);
+  font-size: 0.92rem;
+}
+
+.upload-form select {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-solid);
+}
