@@ -92,6 +92,19 @@ export const notesAPI = {
   deleteNote: (ids) => api.delete('/ifps/delete', { data: { id: ids } }),
   previewUrl: (cid) => `${API_URL}/ifps/preview/${cid}`,
   resourceTypes: () => api.get('/meta/resource-types'),
+  versions: (id) => api.get(`/ifps/${id}/versions`),
+}
+
+export const collectionsAPI = {
+  list: (params) => api.get('/collections', { params }),
+  create: (payload) => api.post('/collections', payload),
+  get: (id) => api.get(`/collections/${id}`),
+  getShared: (shareId) => api.get(`/collections/share/${shareId}`),
+  update: (id, payload) => api.put(`/collections/${id}`, payload),
+  remove: (id) => api.delete(`/collections/${id}`),
+  addNote: (id, noteId) => api.post(`/collections/${id}/notes`, { noteId }),
+  removeNote: (id, noteId) => api.delete(`/collections/${id}/notes/${noteId}`),
+  reorder: (id, noteIds) => api.put(`/collections/${id}/reorder`, { noteIds }),
 }
 
 export { API_URL }

@@ -111,6 +111,34 @@ const noteSchema = new mongoose.Schema({
         trim: true,
         default: ''
     },
+    // Versioning — root chain + parent pointer
+    rootNoteId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Note',
+        index: true,
+        default: null
+    },
+    parentVersionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Note',
+        default: null
+    },
+    version: {
+        type: Number,
+        default: 1,
+        min: 1
+    },
+    isLatest: {
+        type: Boolean,
+        default: true,
+        index: true
+    },
+    changelog: {
+        type: String,
+        trim: true,
+        maxlength: 500,
+        default: ''
+    },
     uploadedAt: {
         type: Date,
         default: Date.now,
@@ -145,5 +173,7 @@ noteSchema.index({ uploaderId: 1, uploadedAt: -1 });
 noteSchema.index({ resourceType: 1, uploadedAt: -1 });
 noteSchema.index({ resourceType: 1, likeCount: -1 });
 noteSchema.index({ fileHash: 1, uploadedAt: -1 });
+noteSchema.index({ rootNoteId: 1, version: 1 });
+noteSchema.index({ rootNoteId: 1, isLatest: 1 });
 
 module.exports = mongoose.model('Note', noteSchema);

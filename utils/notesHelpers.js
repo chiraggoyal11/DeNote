@@ -59,6 +59,11 @@ function serializeNote(note, { userId = null, username = null, favoriteCids = nu
         verifiedAt: doc.verifiedAt || null,
         qualityScore,
         qualityScoreExplanation: qualityScoreExplanation(doc),
+        version: doc.version || 1,
+        isLatest: doc.isLatest !== false,
+        rootNoteId: doc.rootNoteId || doc._id || null,
+        parentVersionId: doc.parentVersionId || null,
+        changelog: doc.changelog || '',
         likedByMe: userId ? likes.includes(String(userId)) : false,
         favoritedByMe,
         isOwner: isNoteOwner(doc, userId, username)
@@ -146,6 +151,12 @@ function buildNotesQuery(query) {
 
     if (verified === '1' || verified === 'true') {
         filter.isVerified = true;
+    }
+
+    // Default browse/mine shows only latest versions (legacy notes without isLatest still appear)
+    const includeVersions = query.includeVersions === '1' || query.includeVersions === 'true';
+    if (!includeVersions) {
+        filter.isLatest = { $ne: false };
     }
 
     if (q) {

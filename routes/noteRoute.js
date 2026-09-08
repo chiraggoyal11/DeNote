@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const User = require('../models/user');
 const Note = require('../models/note');
 const bcryptjs= require('bcryptjs');
@@ -912,7 +913,9 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
             : '';
         const examYear = req.body.examYear ? String(req.body.examYear).trim().slice(0, 16) : '';
         const examType = req.body.examType ? String(req.body.examType).trim().slice(0, 60) : '';
+        const changelog = req.body.changelog ? String(req.body.changelog).trim().slice(0, 500) : '';
         const forceDuplicate = truthyFlag(req.body.forceDuplicate);
+        const versionOfRaw = req.body.versionOf || req.body.parentNoteId || '';
 
         if (!title || !subject || !branch || !sem) {
             return res.status(400).json({
@@ -925,6 +928,29 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
                 success: false,
                 msg: 'Choose File.'
             });
+        }
+
+        let parentNote = null;
+        let rootNoteId = null;
+        let nextVersion = 1;
+        if (versionOfRaw) {
+            parentNote = mongoose.isValidObjectId(versionOfRaw)
+                ? await Note.findById(versionOfRaw)
+                : await Note.findOne({ cid: String(versionOfRaw) });
+            if (!parentNote) {
+                return res.status(404).json({ success: false, msg: 'Parent note for versioning not found.' });
+            }
+            if (!isNoteOwner(parentNote, owner._id, owner.username)) {
+                return res.status(403).json({
+                    success: false,
+                    msg: 'Only the uploader can publish a new version of this note.'
+                });
+            }
+            rootNoteId = parentNote.rootNoteId || parentNote._id;
+            const latest = await Note.findOne({
+                $or: [{ _id: rootNoteId }, { rootNoteId }]
+            }).sort({ version: -1 });
+            nextVersion = (latest?.version || parentNote.version || 1) + 1;
         }
 
         const fileHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
@@ -946,7 +972,6 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
         let cid;
         let reusedCid = false;
         if (existingByHash && forceDuplicate) {
-            // Same bytes — reuse CID to avoid burning Pinata quota
             cid = existingByHash.cid;
             reusedCid = true;
         } else {
@@ -981,15 +1006,33 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
             likeCount: 0,
             likes: [],
             viewCount: 0,
-            downloadCount: 0
+            downloadCount: 0,
+            version: nextVersion,
+            isLatest: true,
+            parentVersionId: parentNote ? parentNote._id : null,
+            rootNoteId: rootNoteId || null,
+            changelog: parentNote ? (changelog || `Version ${nextVersion}`) : ''
         });
         await note.save();
+
+        if (!note.rootNoteId) {
+            note.rootNoteId = note._id;
+            await note.save();
+        } else {
+            await Note.updateMany(
+                {
+                    _id: { $ne: note._id },
+                    $or: [{ _id: note.rootNoteId }, { rootNoteId: note.rootNoteId }]
+                },
+                { $set: { isLatest: false } }
+            );
+        }
 
         res.status(200).json({
             success: true,
             msg: reusedCid
                 ? 'Notes Uploaded (reused existing IPFS pin for identical file).'
-                : 'Notes Uploaded.',
+                : (parentNote ? `Version ${nextVersion} uploaded.` : 'Notes Uploaded.'),
             cid,
             reusedCid,
             fileHash,
@@ -1215,6 +1258,35 @@ router.get('/ifps/favorites', user_jwt, async (req, res) => {
     } catch (err) {
         console.log(err);
         res.status(500).json({ success: false, msg: 'Failed to load favorites' });
+    }
+});
+
+// Version history for a note (by Mongo id or CID)
+router.get('/ifps/:id/versions', optionalJwt, async (req, res) => {
+    try {
+        const raw = req.params.id;
+        const note = mongoose.isValidObjectId(raw)
+            ? await Note.findById(raw)
+            : await Note.findOne({ cid: raw });
+        if (!note) {
+            return res.status(404).json({ success: false, msg: 'Note not found' });
+        }
+
+        const rootId = note.rootNoteId || note._id;
+        const versions = await Note.find({
+            $or: [{ _id: rootId }, { rootNoteId: rootId }]
+        }).sort({ version: 1 });
+
+        const ctx = await attachViewerContext(req);
+        res.status(200).json({
+            success: true,
+            rootNoteId: rootId,
+            currentVersion: versions.find((v) => v.isLatest !== false)?.version || note.version || 1,
+            versions: versions.map((v) => serializeNote(v, ctx))
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, msg: 'Failed to load versions' });
     }
 });
 

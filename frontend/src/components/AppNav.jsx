@@ -51,6 +51,7 @@ function AppNav({ onLogout }) {
         <nav className="topbar-nav" aria-label="Main">
           <NavLink to="/dashboard">Home</NavLink>
           <NavLink to="/notes">Browse</NavLink>
+          <NavLink to="/collections">Collections</NavLink>
           <NavLink to="/my-uploads">My uploads</NavLink>
           <NavLink to="/favorites">Favorites</NavLink>
           <NavLink to="/upload" className="nav-cta">Upload</NavLink>
