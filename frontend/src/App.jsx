@@ -10,6 +10,8 @@ import NoteView from './components/NoteView'
 import Profile from './components/Profile'
 import MyUploads from './components/MyUploads'
 import Favorites from './components/Favorites'
+import Collections from './components/Collections'
+import CollectionView from './components/CollectionView'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('token'))
@@ -67,6 +69,18 @@ function App() {
           <Route
             path="/favorites"
             element={isAuthenticated ? <Favorites onLogout={handleLogout} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/collections"
+            element={isAuthenticated ? <Collections onLogout={handleLogout} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/collections/share/:shareId"
+            element={isAuthenticated ? <CollectionView onLogout={handleLogout} shared /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/collections/:id"
+            element={isAuthenticated ? <CollectionView onLogout={handleLogout} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/note/:cid"

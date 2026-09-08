@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { notesAPI } from '../api'
+import { collectionsAPI, notesAPI } from '../api'
 import AppNav from './AppNav'
 
 const IPFS_GATEWAY = (import.meta.env.VITE_IPFS_GATEWAY || 'https://gateway.pinata.cloud/ipfs/').replace(/\/?$/, '/')
@@ -8,9 +8,13 @@ const IPFS_GATEWAY = (import.meta.env.VITE_IPFS_GATEWAY || 'https://gateway.pina
 function NoteView({ onLogout }) {
   const { cid } = useParams()
   const [note, setNote] = useState(null)
+  const [versions, setVersions] = useState([])
+  const [collections, setCollections] = useState([])
+  const [collectionId, setCollectionId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [collectionMsg, setCollectionMsg] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -27,6 +31,14 @@ function NoteView({ onLogout }) {
         ...noteData,
         fileUrl: response.data.url || noteData?.fileUrl
       })
+      if (noteData?._id) {
+        const [verRes, colRes] = await Promise.all([
+          notesAPI.versions(noteData._id).catch(() => ({ data: { versions: [] } })),
+          collectionsAPI.list().catch(() => ({ data: { collections: [] } }))
+        ])
+        setVersions(verRes.data.versions || [])
+        setCollections(colRes.data.collections || [])
+      }
     } catch (err) {
       setError('Failed to fetch note details')
       console.error(err)
@@ -84,6 +96,20 @@ function NoteView({ onLogout }) {
     }
   }
 
+  const handleAddToCollection = async () => {
+    if (!note?._id || !collectionId) return
+    setBusy(true)
+    setCollectionMsg('')
+    try {
+      await collectionsAPI.addNote(collectionId, note._id)
+      setCollectionMsg('Added to collection.')
+    } catch (err) {
+      setCollectionMsg(err.response?.data?.msg || 'Could not add to collection')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const openUrl = note?.fileUrl || `${IPFS_GATEWAY}${cid}`
   const previewUrl = notesAPI.previewUrl(cid)
 
@@ -112,18 +138,50 @@ function NoteView({ onLogout }) {
       <div className="page-head">
         <div>
           <Link to="/notes" className="link">← Back to browse</Link>
-          <h1 className="page-title" style={{ marginTop: '0.65rem' }}>{note?.title || 'Untitled note'}</h1>
+          <h1 className="page-title" style={{ marginTop: '0.65rem' }}>
+            {note?.isVerified ? <span className="verified-chip" title="Verified">✓ Verified</span> : null}
+            {' '}
+            {note?.title || 'Untitled note'}
+            {note?.version ? <span className="type-chip" style={{ marginLeft: '0.5rem' }}>v{note.version}</span> : null}
+          </h1>
         </div>
       </div>
 
       <section className="panel">
         <div className="meta-grid">
+          <p><strong>Type:</strong> {note?.resourceTypeLabel || 'Notes'}</p>
           <p><strong>Subject:</strong> {note?.subject || 'N/A'}</p>
           <p><strong>Branch:</strong> {note?.branch || 'N/A'}</p>
           <p><strong>Semester:</strong> {note?.sem || 'N/A'}</p>
+          {note?.college ? <p><strong>College:</strong> {note.college}</p> : null}
           <p><strong>Uploader:</strong> @{note?.uploader || 'Anonymous'}</p>
+          <p><strong>Quality:</strong> {note?.qualityScore ?? 0}/100</p>
+          <p><strong>Views:</strong> {note?.viewCount || 0}</p>
+          <p><strong>Version:</strong> v{note?.version || 1}{note?.isLatest ? ' (latest)' : ''}</p>
           <p><strong>CID:</strong> <code>{cid}</code></p>
         </div>
+
+        {note?.changelog ? (
+          <p className="auth-hint" style={{ marginTop: '0.75rem' }}>Changes: {note.changelog}</p>
+        ) : null}
+
+        {note?.qualityScoreExplanation ? (
+          <p className="auth-hint" style={{ marginTop: '0.75rem' }}>{note.qualityScoreExplanation}</p>
+        ) : null}
+
+        {Array.isArray(note?.tags) && note.tags.length > 0 && (
+          <p className="tag-row" style={{ marginTop: '0.75rem' }}>
+            {note.tags.map((t) => `#${t}`).join(' ')}
+          </p>
+        )}
+
+        {(note?.examYear || note?.examType || note?.university) && (
+          <div className="meta-grid" style={{ marginTop: '0.75rem' }}>
+            {note.university ? <p><strong>University:</strong> {note.university}</p> : null}
+            {note.examYear ? <p><strong>Year:</strong> {note.examYear}</p> : null}
+            {note.examType ? <p><strong>Exam:</strong> {note.examType}</p> : null}
+          </div>
+        )}
 
         {note?.description ? (
           <p className="note-description" style={{ marginTop: '1rem' }}>{note.description}</p>
@@ -154,17 +212,53 @@ function NoteView({ onLogout }) {
             Open on IPFS
           </a>
           {note?.isOwner && (
+            <Link className="btn btn-inline" to={`/upload?versionOf=${note._id}`}>
+              Upload new version
+            </Link>
+          )}
+          {note?.isOwner && (
             <button type="button" onClick={handleDelete} className="btn btn-danger btn-inline">
               Delete note
             </button>
           )}
         </div>
-        {!note?.isOwner && (
-          <p className="auth-hint" style={{ marginTop: '0.75rem' }}>
-            Only the uploader can delete this note.
-          </p>
-        )}
+
+        <div className="collection-add-row">
+          <select
+            aria-label="Add to collection"
+            value={collectionId}
+            onChange={(e) => setCollectionId(e.target.value)}
+          >
+            <option value="">Add to collection…</option>
+            {collections.map((c) => (
+              <option key={c._id} value={c._id}>{c.name}</option>
+            ))}
+          </select>
+          <button type="button" className="btn btn-secondary btn-inline" disabled={!collectionId || busy} onClick={handleAddToCollection}>
+            Add
+          </button>
+          {collections.length === 0 && (
+            <Link to="/collections" className="link">Create a collection</Link>
+          )}
+        </div>
+        {collectionMsg && <p className="page-sub">{collectionMsg}</p>}
       </section>
+
+      {versions.length > 1 && (
+        <section className="panel" style={{ marginTop: '1rem' }}>
+          <h2 className="home-section-title" style={{ marginTop: 0 }}>Versions</h2>
+          <ul className="version-list">
+            {versions.map((v) => (
+              <li key={v._id} className={v.cid === cid ? 'is-current' : ''}>
+                <Link to={`/note/${v.cid}`}>
+                  v{v.version}{v.isLatest ? ' · latest' : ''} — {v.title}
+                </Link>
+                {v.changelog ? <span className="page-sub"> · {v.changelog}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="section">
         <h2>Preview</h2>

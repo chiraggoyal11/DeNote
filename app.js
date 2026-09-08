@@ -72,6 +72,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/denote', generalLimiter);
+app.use('/api/denote/collections', require('./routes/collectionRoute'));
 app.use('/api/denote', require('./routes/noteRoute'));
 
 app.use(notFoundHandler);

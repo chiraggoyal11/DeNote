@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { notesAPI } from '../api'
 import AppNav from './AppNav'
 import { EmptyNotes, NoteCard, Pagination } from './NoteCard'
+import { RESOURCE_TYPES } from '../utils/resourceTypes'
 
 function NotesList({ onLogout }) {
   const [notes, setNotes] = useState([])
@@ -16,6 +17,9 @@ function NotesList({ onLogout }) {
     semester: '',
     subject: '',
     uploader: '',
+    college: '',
+    resourceType: 'all',
+    tag: '',
     sort: 'recent'
   })
 
@@ -33,6 +37,11 @@ function NotesList({ onLogout }) {
       if (filterArg.semester.trim()) params.sem = filterArg.semester.trim()
       if (filterArg.subject.trim()) params.subject = filterArg.subject.trim()
       if (filterArg.uploader.trim()) params.uploader = filterArg.uploader.trim()
+      if (filterArg.college.trim()) params.college = filterArg.college.trim()
+      if (filterArg.tag.trim()) params.tag = filterArg.tag.trim()
+      if (filterArg.resourceType && filterArg.resourceType !== 'all') {
+        params.resourceType = filterArg.resourceType
+      }
 
       const response = await notesAPI.queryNotes(params)
       setNotes(response.data.notes || [])
@@ -94,8 +103,8 @@ function NotesList({ onLogout }) {
 
       <section className="page-head">
         <div>
-          <h1 className="page-title">Browse notes</h1>
-          <p className="page-sub">Search by title, subject, or uploader. Filter and paginate results.</p>
+          <h1 className="page-title">Browse resources</h1>
+          <p className="page-sub">Search by title, subject, tags, or uploader. Filter by type and sort by popularity.</p>
         </div>
       </section>
 
@@ -103,18 +112,29 @@ function NotesList({ onLogout }) {
         <input
           type="search"
           name="q"
-          placeholder="Search title, subject, uploader…"
+          placeholder="Search title, subject, tags, uploader…"
           value={filters.q}
           onChange={handleFilterChange}
           className="filters-q"
         />
+        <select name="resourceType" value={filters.resourceType} onChange={handleFilterChange} aria-label="Resource type">
+          <option value="all">All types</option>
+          {RESOURCE_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
         <input type="text" name="branch" placeholder="Branch" value={filters.branch} onChange={handleFilterChange} />
         <input type="text" name="semester" placeholder="Semester" value={filters.semester} onChange={handleFilterChange} />
         <input type="text" name="subject" placeholder="Subject" value={filters.subject} onChange={handleFilterChange} />
+        <input type="text" name="college" placeholder="College" value={filters.college} onChange={handleFilterChange} />
         <input type="text" name="uploader" placeholder="Uploader" value={filters.uploader} onChange={handleFilterChange} />
+        <input type="text" name="tag" placeholder="Tag" value={filters.tag} onChange={handleFilterChange} />
         <select name="sort" value={filters.sort} onChange={handleFilterChange} aria-label="Sort notes">
           <option value="recent">Newest</option>
           <option value="likes">Most upvoted</option>
+          <option value="views">Most viewed</option>
+          <option value="downloads">Most downloaded</option>
+          <option value="quality">Highest rated</option>
         </select>
         <button type="submit" className="btn btn-inline">Search</button>
       </form>
@@ -123,7 +143,7 @@ function NotesList({ onLogout }) {
       {error && <div className="error" style={{ marginTop: '1rem' }}>{error}</div>}
 
       {!loading && notes.length === 0 && (
-        <EmptyNotes title="No notes found." actionTo="/upload" actionLabel="Upload a note" />
+        <EmptyNotes title="No resources found." actionTo="/upload" actionLabel="Upload a resource" />
       )}
 
       <div className="notes-grid">
