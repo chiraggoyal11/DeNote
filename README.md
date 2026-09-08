@@ -84,7 +84,7 @@ Important env vars (see `.env.example`):
 ## Testing & CI
 
 ```bash
-npm test                     # backend unit + HTTP smoke (no DB)
+npm test                     # node --test tests/ (unit + HTTP smoke, no DB)
 cd frontend && npm run build # production bundle / code-splitting check
 ```
 
