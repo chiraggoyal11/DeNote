@@ -147,6 +147,16 @@ export const studyAPI = {
   progress: () => api.get('/study/progress'),
 }
 
+export const aiAPI = {
+  status: () => api.get('/ai/status'),
+  summarize: (noteId) => api.post('/ai/summarize', { noteId }),
+  assist: (noteId, question) => api.post('/ai/assist', { noteId, question }),
+  search: (query, limit) => api.post('/ai/search', { query, limit }),
+  generateQuiz: (noteId, count) => api.post('/ai/generate-quiz', { noteId, count }),
+  generateFlashcards: (noteId, payload = {}) => api.post('/ai/generate-flashcards', { noteId, ...payload }),
+  recommendations: (params) => api.get('/ai/recommendations', { params }),
+}
+
 export const adminAPI = {
   stats: () => api.get('/admin/stats'),
   reports: (params) => api.get('/admin/reports', { params }),

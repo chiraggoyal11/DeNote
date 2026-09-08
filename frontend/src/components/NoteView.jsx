@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { adminAPI, collectionsAPI, notesAPI } from '../api'
 import AppNav from './AppNav'
 import CommentSection from './CommentSection'
+import AiPanel from './AiPanel'
 
 const IPFS_GATEWAY = (import.meta.env.VITE_IPFS_GATEWAY || 'https://gateway.pinata.cloud/ipfs/').replace(/\/?$/, '/')
 
@@ -356,6 +357,8 @@ function NoteView({ onLogout }) {
         {collectionMsg && <p className="page-sub">{collectionMsg}</p>}
         {shareMsg && <p className="page-sub">{shareMsg}</p>}
       </section>
+
+      {note?._id && <AiPanel noteId={note._id} noteTitle={note.title} />}
 
       {note?._id && <CommentSection noteId={note._id} />}
 

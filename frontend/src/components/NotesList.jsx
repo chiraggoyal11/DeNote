@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { notesAPI } from '../api'
+import { Link } from 'react-router-dom'
+import { aiAPI, notesAPI } from '../api'
 import AppNav from './AppNav'
 import { EmptyNotes, NoteCard, Pagination } from './NoteCard'
 import { RESOURCE_TYPES } from '../utils/resourceTypes'
@@ -11,6 +12,8 @@ function NotesList({ onLogout }) {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+  const [aiEnabled, setAiEnabled] = useState(false)
+  const [aiHits, setAiHits] = useState(null)
   const [filters, setFilters] = useState({
     q: '',
     branch: '',
@@ -58,6 +61,9 @@ function NotesList({ onLogout }) {
 
   useEffect(() => {
     fetchNotes(1, filters)
+    aiAPI.status()
+      .then((res) => setAiEnabled(Boolean(res.data?.ai?.enabled)))
+      .catch(() => setAiEnabled(false))
     // intentionally run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -68,8 +74,25 @@ function NotesList({ onLogout }) {
 
   const handleSearch = (e) => {
     e?.preventDefault?.()
+    setAiHits(null)
     setPage(1)
     fetchNotes(1, filters)
+  }
+
+  const handleAiSearch = async (e) => {
+    e?.preventDefault?.()
+    if (!filters.q.trim()) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await aiAPI.search(filters.q.trim(), 12)
+      setAiHits(res.data.results || [])
+    } catch (err) {
+      setError(err.response?.data?.msg || 'AI search failed')
+      setAiHits([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const patchNote = (noteId, patch) => {
@@ -137,15 +160,41 @@ function NotesList({ onLogout }) {
           <option value="quality">Highest rated</option>
         </select>
         <button type="submit" className="btn btn-inline">Search</button>
+        {aiEnabled && (
+          <button type="button" className="btn btn-secondary btn-inline" onClick={handleAiSearch}>
+            AI search
+          </button>
+        )}
       </form>
 
       {loading && <p className="loading">Loading notes…</p>}
       {error && <div className="error" style={{ marginTop: '1rem' }}>{error}</div>}
 
-      {!loading && notes.length === 0 && (
+      {aiHits && (
+        <section className="panel" style={{ marginTop: '1rem' }}>
+          <h2 className="home-section-title" style={{ marginTop: 0 }}>Semantic matches</h2>
+          {aiHits.length === 0 ? (
+            <p className="page-sub">No semantic matches for that query.</p>
+          ) : (
+            <ul className="admin-simple-list">
+              {aiHits.map((h) => (
+                <li key={h.noteId}>
+                  <Link to={`/note/${h.cid}`} className="link">{h.title}</Link>
+                  <div className="page-sub">
+                    score {h.score} · {h.subject || 'General'} · {h.snippet}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {!loading && !aiHits && notes.length === 0 && (
         <EmptyNotes title="No resources found." actionTo="/upload" actionLabel="Upload a resource" />
       )}
 
+      {!aiHits && (
       <div className="notes-grid">
         {notes.map((note) => (
           <NoteCard
@@ -156,8 +205,9 @@ function NotesList({ onLogout }) {
           />
         ))}
       </div>
+      )}
 
-      {!loading && (
+      {!loading && !aiHits && (
         <Pagination
           page={page}
           totalPages={totalPages}
