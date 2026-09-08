@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { notesAPI } from '../api'
 import AppNav from './AppNav'
 import { EmptyNotes, NoteCard, Pagination } from './NoteCard'
+import { NotesGridSkeleton } from './Skeleton'
 
 function Favorites({ onLogout }) {
   const [notes, setNotes] = useState([])
@@ -46,8 +47,8 @@ function Favorites({ onLogout }) {
         </div>
       </section>
 
-      {loading && <p className="loading">Loading favorites…</p>}
-      {error && <div className="error">{error}</div>}
+      {loading && <NotesGridSkeleton count={4} />}
+      {error && <div className="error" role="alert">{error}</div>}
 
       {!loading && notes.length === 0 && (
         <EmptyNotes title="No favorites yet." actionTo="/notes" actionLabel="Browse notes" />

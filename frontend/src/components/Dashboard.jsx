@@ -78,6 +78,7 @@ function Dashboard({ onLogout }) {
           <div className="home-cta-row">
             <Link to="/notes" className="btn btn-inline">Browse notes</Link>
             <Link to="/upload" className="btn btn-secondary btn-inline">Upload a note</Link>
+            <Link to="/study" className="btn btn-secondary btn-inline">Study</Link>
           </div>
         </div>
         <div className="home-hero-visual" aria-hidden="true">
@@ -99,6 +100,25 @@ function Dashboard({ onLogout }) {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="home-quick-grid" aria-label="Quick links">
+        <Link to="/notes" className="home-quick-card">
+          <strong>Browse</strong>
+          <span>Find notes by subject, branch, or tags.</span>
+        </Link>
+        <Link to="/study" className="home-quick-card">
+          <strong>Study</strong>
+          <span>Flashcards, quizzes, and your planner.</span>
+        </Link>
+        <Link to="/analytics" className="home-quick-card">
+          <strong>Analytics</strong>
+          <span>Views, opens, saves, and shares.</span>
+        </Link>
+        <Link to="/collections" className="home-quick-card">
+          <strong>Collections</strong>
+          <span>Group notes for a course or exam.</span>
+        </Link>
       </section>
 
       {aiEnabled && recs.length > 0 && (

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { aiAPI, notesAPI } from '../api'
 import AppNav from './AppNav'
 import { EmptyNotes, NoteCard, Pagination } from './NoteCard'
+import { NotesGridSkeleton } from './Skeleton'
 import { RESOURCE_TYPES } from '../utils/resourceTypes'
 
 function NotesList({ onLogout }) {
@@ -167,8 +168,8 @@ function NotesList({ onLogout }) {
         )}
       </form>
 
-      {loading && <p className="loading">Loading notes…</p>}
-      {error && <div className="error" style={{ marginTop: '1rem' }}>{error}</div>}
+      {loading && !aiHits && <NotesGridSkeleton count={6} />}
+      {error && <div className="error" style={{ marginTop: '1rem' }} role="alert">{error}</div>}
 
       {aiHits && (
         <section className="panel" style={{ marginTop: '1rem' }}>
