@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { adminAPI, collectionsAPI, notesAPI } from '../api'
 import AppNav from './AppNav'
+import OfflineBanner from './OfflineBanner'
 import CommentSection from './CommentSection'
 import AiPanel from './AiPanel'
 import { PageSkeleton } from './Skeleton'
+import { cacheKeyNote, withOfflineCache } from '../utils/offlineCache'
 
 const IPFS_GATEWAY = (import.meta.env.VITE_IPFS_GATEWAY || 'https://gateway.pinata.cloud/ipfs/').replace(/\/?$/, '/')
 
@@ -16,6 +18,7 @@ function NoteView({ onLogout }) {
   const [collectionId, setCollectionId] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [fromCache, setFromCache] = useState(false)
   const [busy, setBusy] = useState(false)
   const [collectionMsg, setCollectionMsg] = useState('')
   const [shareMsg, setShareMsg] = useState('')
@@ -31,20 +34,28 @@ function NoteView({ onLogout }) {
   const fetchNote = async () => {
     setLoading(true)
     setError('')
+    setFromCache(false)
     try {
-      const response = await notesAPI.getNote(cid)
-      const noteData = response.data.note
+      const { data, fromCache: cached } = await withOfflineCache(
+        cacheKeyNote(cid),
+        () => notesAPI.getNote(cid)
+      )
+      const noteData = data.note
       setNote({
         ...noteData,
-        fileUrl: response.data.url || noteData?.fileUrl
+        fileUrl: data.url || noteData?.fileUrl
       })
-      if (noteData?._id) {
+      setFromCache(Boolean(cached))
+      if (noteData?._id && !cached) {
         const [verRes, colRes] = await Promise.all([
           notesAPI.versions(noteData._id).catch(() => ({ data: { versions: [] } })),
           collectionsAPI.list().catch(() => ({ data: { collections: [] } }))
         ])
         setVersions(verRes.data.versions || [])
         setCollections(colRes.data.collections || [])
+      } else if (cached) {
+        setVersions([])
+        setCollections([])
       }
     } catch (err) {
       setError('Failed to fetch note details')
@@ -191,6 +202,7 @@ function NoteView({ onLogout }) {
   return (
     <div className="container page-enter">
       <AppNav onLogout={onLogout} />
+      <OfflineBanner fromCache={fromCache} scope="stale" />
 
       <div className="page-head note-detail-head">
         <div>

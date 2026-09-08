@@ -2,12 +2,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { studyAPI } from '../api'
 import AppNav from './AppNav'
+import OfflineBanner from './OfflineBanner'
+import {
+  cacheKeyStudyDecks,
+  cacheKeyStudyProgress,
+  withOfflineCache
+} from '../utils/offlineCache'
 
 const TABS = ['progress', 'planner', 'decks', 'review', 'quiz']
 
 function Study({ onLogout }) {
   const [tab, setTab] = useState('progress')
   const [error, setError] = useState('')
+  const [fromCache, setFromCache] = useState(false)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(null)
   const [plan, setPlan] = useState([])
@@ -28,16 +35,24 @@ function Study({ onLogout }) {
   const [cardForm, setCardForm] = useState({ front: '', back: '', subject: '' })
 
   const loadProgress = async () => {
-    const res = await studyAPI.progress()
-    setProgress(res.data.progress)
+    const { data, fromCache: cached } = await withOfflineCache(
+      cacheKeyStudyProgress(),
+      () => studyAPI.progress()
+    )
+    setProgress(data.progress)
+    return cached
   }
   const loadPlan = async () => {
     const res = await studyAPI.plan()
     setPlan(res.data.items || [])
   }
   const loadDecks = async () => {
-    const res = await studyAPI.decks()
-    setDecks(res.data.decks || [])
+    const { data, fromCache: cached } = await withOfflineCache(
+      cacheKeyStudyDecks(),
+      () => studyAPI.decks()
+    )
+    setDecks(data.decks || [])
+    return cached
   }
   const loadDeckDetail = async (id) => {
     if (!id) {
@@ -56,8 +71,16 @@ function Study({ onLogout }) {
 
   const refresh = async () => {
     setError('')
+    setFromCache(false)
     try {
-      await Promise.all([loadProgress(), loadPlan(), loadDecks()])
+      const [progressCached, , decksCached] = await Promise.all([
+        loadProgress(),
+        loadPlan().catch(() => {
+          setPlan([])
+        }),
+        loadDecks()
+      ])
+      setFromCache(Boolean(progressCached || decksCached))
     } catch (err) {
       setError(err.response?.data?.msg || 'Failed to load study data')
     }
@@ -228,6 +251,7 @@ function Study({ onLogout }) {
   return (
     <div className="container page-enter">
       <AppNav onLogout={onLogout} />
+      <OfflineBanner fromCache={fromCache} scope="stale" />
 
       <section className="page-head">
         <div>
