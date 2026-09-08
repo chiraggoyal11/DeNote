@@ -2,20 +2,30 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { notesAPI } from '../api'
 import AppNav from './AppNav'
+import OfflineBanner from './OfflineBanner'
+import { cacheKeyAnalytics, withOfflineCache } from '../utils/offlineCache'
 
 function Analytics({ onLogout }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [fromCache, setFromCache] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       setLoading(true)
       setError('')
+      setFromCache(false)
       try {
-        const res = await notesAPI.analytics()
-        if (!cancelled) setData(res.data.analytics)
+        const { data: payload, fromCache: cached } = await withOfflineCache(
+          cacheKeyAnalytics(),
+          () => notesAPI.analytics()
+        )
+        if (!cancelled) {
+          setData(payload.analytics)
+          setFromCache(Boolean(cached))
+        }
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.msg || 'Failed to load analytics')
       } finally {
@@ -30,6 +40,7 @@ function Analytics({ onLogout }) {
   return (
     <div className="container page-enter">
       <AppNav onLogout={onLogout} />
+      <OfflineBanner fromCache={fromCache} scope="stale" />
 
       <section className="page-head">
         <div>

@@ -2165,3 +2165,36 @@ body.nav-drawer-open {
     background: rgba(19, 34, 43, 0.08);
   }
 }
+
+/* —— Phase 9: offline banner —— */
+.offline-banner {
+  margin: 0 auto;
+  padding: 0.65rem 1rem;
+  max-width: 1100px;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--line);
+  animation: offline-banner-in 280ms ease-out;
+}
+
+.offline-banner.is-offline {
+  background: linear-gradient(90deg, #fff4e5, #ffe8cc);
+  color: #7a4a00;
+}
+
+.offline-banner.is-stale {
+  background: linear-gradient(90deg, #e8f4ff, #dcecff);
+  color: #1d4f7a;
+}
+
+@keyframes offline-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

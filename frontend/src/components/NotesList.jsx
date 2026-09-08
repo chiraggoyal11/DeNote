@@ -2,14 +2,17 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { aiAPI, notesAPI } from '../api'
 import AppNav from './AppNav'
+import OfflineBanner from './OfflineBanner'
 import { EmptyNotes, NoteCard, Pagination } from './NoteCard'
 import { NotesGridSkeleton } from './Skeleton'
 import { RESOURCE_TYPES } from '../utils/resourceTypes'
+import { cacheKeyNotesQuery, withOfflineCache } from '../utils/offlineCache'
 
 function NotesList({ onLogout }) {
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [fromCache, setFromCache] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -30,6 +33,7 @@ function NotesList({ onLogout }) {
   const fetchNotes = useCallback(async (pageArg = page, filterArg = filters) => {
     setLoading(true)
     setError('')
+    setFromCache(false)
     try {
       const params = {
         page: pageArg,
@@ -47,11 +51,15 @@ function NotesList({ onLogout }) {
         params.resourceType = filterArg.resourceType
       }
 
-      const response = await notesAPI.queryNotes(params)
-      setNotes(response.data.notes || [])
-      setPage(response.data.page || pageArg)
-      setTotalPages(response.data.totalPages || 1)
-      setTotal(response.data.total || 0)
+      const { data, fromCache: cached } = await withOfflineCache(
+        cacheKeyNotesQuery(params),
+        () => notesAPI.queryNotes(params)
+      )
+      setNotes(data.notes || [])
+      setPage(data.page || pageArg)
+      setTotalPages(data.totalPages || 1)
+      setTotal(data.total || 0)
+      setFromCache(Boolean(cached))
     } catch (err) {
       setError('Failed to fetch notes')
       console.error('Fetch notes error:', err)
@@ -124,6 +132,7 @@ function NotesList({ onLogout }) {
   return (
     <div className="container page-enter">
       <AppNav onLogout={onLogout} />
+      <OfflineBanner fromCache={fromCache} scope="stale" />
 
       <section className="page-head">
         <div>
