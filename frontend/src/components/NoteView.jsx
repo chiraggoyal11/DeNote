@@ -125,22 +125,26 @@ function NoteView({ onLogout }) {
           <p><strong>CID:</strong> <code>{cid}</code></p>
         </div>
 
-        <div className="action-row" style={{ marginTop: '1.25rem', alignItems: 'center' }}>
+        <div className="action-row note-view-actions" style={{ marginTop: '1.25rem', alignItems: 'center' }}>
           <button
             type="button"
-            className={`btn btn-inline ${note?.likedByMe ? '' : 'btn-secondary'}`}
+            className={`chip-btn chip-upvote chip-lg ${note?.likedByMe ? 'is-active' : ''}`}
             onClick={handleToggleLike}
             disabled={busy}
+            aria-pressed={Boolean(note?.likedByMe)}
           >
-            {note?.likedByMe ? '▲ Upvoted' : '▲ Upvote'} · {note?.likeCount || 0}
+            <span className="chip-icon" aria-hidden="true">{note?.likedByMe ? '▲' : '△'}</span>
+            <span className="chip-label">{note?.likedByMe ? 'Upvoted' : 'Upvote'} · {note?.likeCount || 0}</span>
           </button>
           <button
             type="button"
-            className={`btn btn-inline ${note?.favoritedByMe ? '' : 'btn-secondary'}`}
+            className={`chip-btn chip-save chip-lg ${note?.favoritedByMe ? 'is-active' : ''}`}
             onClick={handleToggleFavorite}
             disabled={busy}
+            aria-pressed={Boolean(note?.favoritedByMe)}
           >
-            {note?.favoritedByMe ? '★ Saved' : '☆ Save'}
+            <span className="chip-icon" aria-hidden="true">{note?.favoritedByMe ? '★' : '☆'}</span>
+            <span className="chip-label">{note?.favoritedByMe ? 'Saved' : 'Save'}</span>
           </button>
           <a className="btn btn-inline btn-secondary" href={openUrl} target="_blank" rel="noopener noreferrer">
             Open on IPFS
