@@ -76,6 +76,7 @@ app.use('/api/denote/collections', require('./routes/collectionRoute'));
 app.use('/api/denote', require('./routes/communityRoute'));
 app.use('/api/denote', require('./routes/adminRoute'));
 app.use('/api/denote', require('./routes/studyRoute'));
+app.use('/api/denote', require('./routes/aiRoute'));
 app.use('/api/denote', require('./routes/noteRoute'));
 
 app.use(notFoundHandler);

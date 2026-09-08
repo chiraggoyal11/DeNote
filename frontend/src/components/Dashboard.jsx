@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { authAPI } from '../api'
+import { authAPI, aiAPI } from '../api'
 import AppNav from './AppNav'
 
 function Dashboard({ onLogout }) {
@@ -9,9 +9,23 @@ function Dashboard({ onLogout }) {
     return { username: cached || 'User' }
   })
   const [loading, setLoading] = useState(true)
+  const [recs, setRecs] = useState([])
+  const [aiEnabled, setAiEnabled] = useState(false)
 
   useEffect(() => {
     fetchUserProfile()
+    aiAPI.status()
+      .then((res) => {
+        const on = Boolean(res.data?.ai?.enabled)
+        setAiEnabled(on)
+        if (on) {
+          return aiAPI.recommendations({ limit: 6 }).then((r) => {
+            setRecs(r.data.recommendations || [])
+          })
+        }
+        return null
+      })
+      .catch(() => {})
   }, [])
 
   const fetchUserProfile = async () => {
@@ -86,6 +100,21 @@ function Dashboard({ onLogout }) {
           </div>
         </div>
       </section>
+
+      {aiEnabled && recs.length > 0 && (
+        <section className="home-section home-section-delay-1">
+          <h2 className="home-section-title">Recommended for you</h2>
+          <p className="home-section-lead">Personalized from subjects you upvote and save (optional AI layer).</p>
+          <ul className="admin-simple-list" style={{ maxWidth: 720 }}>
+            {recs.map((r) => (
+              <li key={r.noteId}>
+                <Link to={`/note/${r.cid}`} className="link">{r.title}</Link>
+                <div className="page-sub">{r.subject || 'General'} · {r.reason}</div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="home-section home-section-delay-1">
         <h2 className="home-section-title">How DeNote works</h2>
