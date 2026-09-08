@@ -15,6 +15,7 @@ import CollectionView from './components/CollectionView'
 import PublicProfile from './components/PublicProfile'
 import Activity from './components/Activity'
 import AdminDashboard from './components/AdminDashboard'
+import Analytics from './components/Analytics'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('token'))
@@ -101,6 +102,10 @@ function App() {
           <Route
             path="/admin"
             element={isAuthenticated ? <AdminDashboard onLogout={handleLogout} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/analytics"
+            element={isAuthenticated ? <Analytics onLogout={handleLogout} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/profile"

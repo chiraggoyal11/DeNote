@@ -218,6 +218,9 @@ function NoteView({ onLogout }) {
           </p>
           <p><strong>Quality:</strong> {note?.qualityScore ?? 0}/100</p>
           <p><strong>Views:</strong> {note?.viewCount || 0}</p>
+          <p><strong>Opens:</strong> {note?.downloadCount || 0}</p>
+          <p><strong>Saves:</strong> {note?.favoriteCount || 0}</p>
+          <p><strong>Shares:</strong> {note?.shareCount || 0}</p>
           <p><strong>Version:</strong> v{note?.version || 1}{note?.isLatest ? ' (latest)' : ''}</p>
           <p><strong>CID:</strong> <code>{cid}</code></p>
         </div>
@@ -282,6 +285,17 @@ function NoteView({ onLogout }) {
                 setShareMsg('Note link copied')
               } catch {
                 setShareMsg(url)
+              }
+              if (note?._id) {
+                try {
+                  const res = await notesAPI.recordShare(note._id)
+                  const count = res.data.shareCount
+                  if (typeof count === 'number') {
+                    setNote((n) => ({ ...n, shareCount: count }))
+                  }
+                } catch {
+                  /* non-blocking */
+                }
               }
             }}
           >

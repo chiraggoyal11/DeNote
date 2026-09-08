@@ -58,6 +58,7 @@ function AppNav({ onLogout }) {
           <NavLink to="/activity">Following</NavLink>
           <NavLink to="/collections">Collections</NavLink>
           <NavLink to="/my-uploads">My uploads</NavLink>
+          <NavLink to="/analytics">Analytics</NavLink>
           <NavLink to="/favorites">Favorites</NavLink>
           {isStaff && <NavLink to="/admin">Moderation</NavLink>}
           <NavLink to="/upload" className="nav-cta">Upload</NavLink>
@@ -104,6 +105,14 @@ function AppNav({ onLogout }) {
                 onClick={() => setOpen(false)}
               >
                 My uploads
+              </Link>
+              <Link
+                to="/analytics"
+                role="menuitem"
+                className="profile-dropdown-item"
+                onClick={() => setOpen(false)}
+              >
+                Analytics
               </Link>
               <Link
                 to="/favorites"

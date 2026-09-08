@@ -44,8 +44,17 @@ async function profileStats(userId) {
     const [uploadCount, agg, followerCount, followingCount, commentCount, verifiedCount] = await Promise.all([
         Note.countDocuments({ uploaderId: oid, isLatest: { $ne: false } }),
         Note.aggregate([
-            { $match: { uploaderId: oid } },
-            { $group: { _id: null, likes: { $sum: '$likeCount' }, downloads: { $sum: '$downloadCount' } } }
+            { $match: { uploaderId: oid, isLatest: { $ne: false } } },
+            {
+                $group: {
+                    _id: null,
+                    likes: { $sum: { $ifNull: ['$likeCount', 0] } },
+                    downloads: { $sum: { $ifNull: ['$downloadCount', 0] } },
+                    views: { $sum: { $ifNull: ['$viewCount', 0] } },
+                    saves: { $sum: { $ifNull: ['$favoriteCount', 0] } },
+                    shares: { $sum: { $ifNull: ['$shareCount', 0] } }
+                }
+            }
         ]),
         Follow.countDocuments({ followingId: oid }),
         Follow.countDocuments({ followerId: oid }),
@@ -57,6 +66,9 @@ async function profileStats(userId) {
         uploadCount,
         likeReceived: agg[0]?.likes || 0,
         downloadCount: agg[0]?.downloads || 0,
+        viewCount: agg[0]?.views || 0,
+        saveCount: agg[0]?.saves || 0,
+        shareCount: agg[0]?.shares || 0,
         followerCount,
         followingCount,
         commentCount,

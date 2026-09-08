@@ -1042,6 +1042,8 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
             likes: [],
             viewCount: 0,
             downloadCount: 0,
+            favoriteCount: 0,
+            shareCount: 0,
             version: nextVersion,
             isLatest: true,
             parentVersionId: parentNote ? parentNote._id : null,
@@ -1347,9 +1349,17 @@ router.post('/ifps/:id/favorite', user_jwt, async (req, res) => {
         if (existingIdx >= 0) {
             user.fav.splice(existingIdx, 1);
             favorited = false;
+            await Note.updateOne({ _id: note._id }, { $inc: { favoriteCount: -1 } });
+            note.favoriteCount = Math.max(0, (note.favoriteCount || 0) - 1);
         } else {
             user.fav.push({ noteId: note._id, cid: note.cid });
             favorited = true;
+            await Note.updateOne({ _id: note._id }, { $inc: { favoriteCount: 1 } });
+            note.favoriteCount = (note.favoriteCount || 0) + 1;
+        }
+        if ((note.favoriteCount || 0) < 0) {
+            note.favoriteCount = 0;
+            await Note.updateOne({ _id: note._id }, { $set: { favoriteCount: 0 } });
         }
         await user.save();
 
@@ -1368,6 +1378,71 @@ router.post('/ifps/:id/favorite', user_jwt, async (req, res) => {
     } catch (err) {
         console.log(err);
         res.status(500).json({ success: false, msg: 'Failed to update favorite' });
+    }
+});
+
+// Record a share / copy-link (idempotent enough: cheap $inc, no payload store)
+router.post('/ifps/:id/share', user_jwt, async (req, res) => {
+    try {
+        const note = await Note.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { shareCount: 1 } },
+            { new: true }
+        );
+        if (!note) {
+            return res.status(404).json({ success: false, msg: 'Note not found' });
+        }
+        const ctx = await attachViewerContext(req);
+        res.status(200).json({
+            success: true,
+            shareCount: note.shareCount || 0,
+            note: serializeNote(note, ctx)
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, msg: 'Failed to record share' });
+    }
+});
+
+// Creator analytics — aggregates existing counters (free-tier, no event stream)
+router.get('/me/analytics', user_jwt, async (req, res) => {
+    try {
+        const me = await User.findById(req.user.id);
+        if (!me) return res.status(401).json({ success: false, msg: 'Auth. denied' });
+        if (await purgeIfDue(me)) {
+            return res.status(401).json({ success: false, msg: 'Account deleted', accountDeleted: true });
+        }
+
+        const { aggregateNoteEngagement, serializeCreatorNoteRow } = require('../utils/analytics');
+        const match = { uploaderId: me._id, isLatest: { $ne: false } };
+        const totals = await aggregateNoteEngagement(Note, match);
+
+        const notes = await Note.find(match)
+            .sort({ viewCount: -1, likeCount: -1, uploadedAt: -1 })
+            .limit(40)
+            .select('title cid subject resourceType uploadedAt isVerified viewCount downloadCount likeCount favoriteCount shareCount');
+
+        const topByViews = [...notes]
+            .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+            .slice(0, 5)
+            .map(serializeCreatorNoteRow);
+        const topByLikes = [...notes]
+            .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
+            .slice(0, 5)
+            .map(serializeCreatorNoteRow);
+
+        res.status(200).json({
+            success: true,
+            analytics: {
+                totals,
+                notes: notes.map(serializeCreatorNoteRow),
+                topByViews,
+                topByLikes
+            }
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, msg: 'Failed to load analytics' });
     }
 });
 

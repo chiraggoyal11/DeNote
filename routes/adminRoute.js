@@ -488,14 +488,22 @@ router.get('/admin/stats', user_jwt, requireRole('moderator'), async (req, res) 
             Comment.countDocuments({ deleted: { $ne: true } }),
             Follow.countDocuments({}),
             Collection.countDocuments({}),
-            Note.find({ isLatest: { $ne: false } }).sort({ uploadedAt: -1 }).limit(8).select('title uploader uploadedAt likeCount viewCount isVerified cid')
+            Note.find({ isLatest: { $ne: false } }).sort({ uploadedAt: -1 }).limit(8).select('title uploader uploadedAt likeCount viewCount downloadCount favoriteCount shareCount isVerified cid')
         ]);
 
-        const popularSubjects = await Note.aggregate([
-            { $match: { isLatest: { $ne: false } } },
-            { $group: { _id: '$subject', count: { $sum: 1 } } },
-            { $sort: { count: -1 } },
-            { $limit: 8 }
+        const { aggregateNoteEngagement } = require('../utils/analytics');
+        const [popularSubjects, engagement, topNotes] = await Promise.all([
+            Note.aggregate([
+                { $match: { isLatest: { $ne: false } } },
+                { $group: { _id: '$subject', count: { $sum: 1 } } },
+                { $sort: { count: -1 } },
+                { $limit: 8 }
+            ]),
+            aggregateNoteEngagement(Note, { isLatest: { $ne: false } }),
+            Note.find({ isLatest: { $ne: false } })
+                .sort({ viewCount: -1, likeCount: -1 })
+                .limit(8)
+                .select('title uploader viewCount downloadCount likeCount favoriteCount shareCount cid isVerified')
         ]);
 
         res.status(200).json({
@@ -510,7 +518,20 @@ router.get('/admin/stats', user_jwt, requireRole('moderator'), async (req, res) 
                 totalComments,
                 totalFollows,
                 totalCollections,
+                engagement,
                 popularSubjects: popularSubjects.map((s) => ({ subject: s._id || 'Unknown', count: s.count })),
+                topNotes: topNotes.map((n) => ({
+                    _id: n._id,
+                    title: n.title,
+                    uploader: n.uploader,
+                    viewCount: n.viewCount || 0,
+                    downloadCount: n.downloadCount || 0,
+                    likeCount: n.likeCount || 0,
+                    favoriteCount: n.favoriteCount || 0,
+                    shareCount: n.shareCount || 0,
+                    isVerified: Boolean(n.isVerified),
+                    cid: n.cid
+                })),
                 recentUploads: recentUploads.map((n) => ({
                     _id: n._id,
                     title: n.title,
@@ -518,6 +539,9 @@ router.get('/admin/stats', user_jwt, requireRole('moderator'), async (req, res) 
                     uploadedAt: n.uploadedAt,
                     likeCount: n.likeCount || 0,
                     viewCount: n.viewCount || 0,
+                    downloadCount: n.downloadCount || 0,
+                    favoriteCount: n.favoriteCount || 0,
+                    shareCount: n.shareCount || 0,
                     isVerified: Boolean(n.isVerified),
                     cid: n.cid
                 }))
