@@ -15,6 +15,7 @@ function signUserToken(user) {
 }
 
 function publicUser(user) {
+    const fav = Array.isArray(user.fav) ? user.fav : [];
     return {
         _id: user.id || user._id,
         username: user.username,
@@ -28,7 +29,12 @@ function publicUser(user) {
         semester: user.semester || null,
         authProvider: user.authProvider || 'local',
         hasPassword: Boolean(user.password),
-        deletionScheduledAt: user.deletionScheduledAt || null
+        deletionScheduledAt: user.deletionScheduledAt || null,
+        favoriteCount: fav.length,
+        favorites: fav.map((f) => ({
+            noteId: f.noteId || null,
+            cid: f.cid || null
+        }))
     };
 }
 

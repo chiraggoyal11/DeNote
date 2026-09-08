@@ -51,6 +51,8 @@ function AppNav({ onLogout }) {
         <nav className="topbar-nav" aria-label="Main">
           <NavLink to="/dashboard">Home</NavLink>
           <NavLink to="/notes">Browse</NavLink>
+          <NavLink to="/my-uploads">My uploads</NavLink>
+          <NavLink to="/favorites">Favorites</NavLink>
           <NavLink to="/upload" className="nav-cta">Upload</NavLink>
         </nav>
       </div>
@@ -79,6 +81,22 @@ function AppNav({ onLogout }) {
                 <span className="profile-dropdown-name">{displayName}</span>
                 <span className="profile-dropdown-hint">@{username}</span>
               </div>
+              <Link
+                to="/my-uploads"
+                role="menuitem"
+                className="profile-dropdown-item"
+                onClick={() => setOpen(false)}
+              >
+                My uploads
+              </Link>
+              <Link
+                to="/favorites"
+                role="menuitem"
+                className="profile-dropdown-item"
+                onClick={() => setOpen(false)}
+              >
+                Favorites
+              </Link>
               <Link
                 to="/profile"
                 role="menuitem"

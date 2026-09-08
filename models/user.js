@@ -70,6 +70,10 @@ const userSchema = new mongoose.Schema({
         type: String
     },
     fav: [{
+        noteId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Note'
+        },
         cid: {
             type: String
         }
@@ -79,5 +83,4 @@ const userSchema = new mongoose.Schema({
         default: null
     }
 });
-
 module.exports = mongoose.model('User', userSchema);
