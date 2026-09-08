@@ -30,9 +30,10 @@ function getAiStatus() {
         mode: !enabled || provider === 'disabled' ? 'disabled' : provider,
         limitations: [
             'AI is optional and off by default (AI_ENABLED=false).',
-            'heuristic mode uses local extractive/RAG-lite over note metadata (no paid API).',
-            'openai mode requires OPENAI_API_KEY; falls back to heuristic if unset.',
-            'PDF body text is not OCR’d on the free tier — summaries use title/description/tags/subject.'
+            'When enabled, Study AI fetches the note PDF from IPFS and extracts text (pdf-parse) before summarizing or generating quizzes.',
+            'heuristic mode is local/extractive over document text (no paid API).',
+            'openai mode requires OPENAI_API_KEY and also receives extracted document text; falls back to heuristic if unset/fails.',
+            'Scanned image-only PDFs may yield little text without OCR (not included on the free tier).'
         ]
     };
 }
