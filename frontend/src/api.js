@@ -127,6 +127,26 @@ export const communityAPI = {
   activity: (params) => api.get('/activity', { params }),
 }
 
+export const studyAPI = {
+  decks: () => api.get('/study/decks'),
+  createDeck: (payload) => api.post('/study/decks', payload),
+  getDeck: (id) => api.get(`/study/decks/${id}`),
+  updateDeck: (id, payload) => api.put(`/study/decks/${id}`, payload),
+  deleteDeck: (id) => api.delete(`/study/decks/${id}`),
+  addCard: (deckId, payload) => api.post(`/study/decks/${deckId}/cards`, payload),
+  updateCard: (id, payload) => api.put(`/study/cards/${id}`, payload),
+  deleteCard: (id) => api.delete(`/study/cards/${id}`),
+  review: (params) => api.get('/study/review', { params }),
+  reviewCard: (id, quality) => api.post(`/study/cards/${id}/review`, { quality }),
+  startQuiz: (deckId, params) => api.get(`/study/quizzes/${deckId}/start`, { params }),
+  submitQuiz: (deckId, answers) => api.post(`/study/quizzes/${deckId}/submit`, { answers }),
+  plan: () => api.get('/study/plan'),
+  createPlan: (payload) => api.post('/study/plan', payload),
+  updatePlan: (id, payload) => api.put(`/study/plan/${id}`, payload),
+  deletePlan: (id) => api.delete(`/study/plan/${id}`),
+  progress: () => api.get('/study/progress'),
+}
+
 export const adminAPI = {
   stats: () => api.get('/admin/stats'),
   reports: (params) => api.get('/admin/reports', { params }),

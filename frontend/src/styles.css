@@ -1796,3 +1796,60 @@ a {
   text-align: right;
   white-space: nowrap;
 }
+
+/* —— Study —— */
+.study-form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.study-form input,
+.study-form textarea,
+.study-form select {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-solid, #fff);
+  font: inherit;
+}
+
+.study-card {
+  margin-top: 0.5rem;
+}
+
+.study-flash {
+  width: 100%;
+  min-height: 160px;
+  display: grid;
+  place-content: center;
+  gap: 0.65rem;
+  text-align: center;
+  padding: 1.25rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent, #1f6f5b) 6%, white);
+  font-size: 1.15rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.study-flash.static {
+  cursor: default;
+}
+
+.study-answer {
+  margin-top: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  background: var(--surface-solid, #fff);
+}
+
+.study-result {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, #1f6f5b 30%, white);
+  background: color-mix(in srgb, #1f6f5b 8%, white);
+  margin-bottom: 0.85rem;
+}
