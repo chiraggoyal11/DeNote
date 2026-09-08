@@ -1,18 +1,29 @@
-const express=require('express');
-const morgan=require('morgan');
-const dotenv=require('dotenv');
-const connectDB=require('./db');
-const cors=require('cors');
-const app=express();
-const colors=require('colors');
+const express = require('express');
+const morgan = require('morgan');
+const dotenv = require('dotenv');
+const connectDB = require('./db');
+const cors = require('cors');
+const helmet = require('helmet');
+const colors = require('colors');
+const { generalLimiter } = require('./middleware/rateLimit');
+const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
+
+const app = express();
 
 // Load environment variables first
 // In production (Render), env vars are set in dashboard, not config.env
 if (process.env.NODE_ENV !== 'production') {
     dotenv.config({
-        path:'./config.env'
+        path: './config.env'
     });
 }
+
+// Security headers (keep COOP/CSP relaxed so Google Identity + iframe PDF preview work)
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 
 // CORS configuration - allows requests from frontend
 const allowedOrigins = [
@@ -28,7 +39,7 @@ const corsOptions = {
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps, curl, or server-to-server)
         if (!origin) return callback(null, true);
-        
+
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
@@ -43,18 +54,31 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(morgan('dev'))
+app.use(morgan('dev'));
 
-app.use(express.json({}));
-app.use(express.urlencoded({extended:false}));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
 // Handle OPTIONS preflight requests
 app.options('*', cors(corsOptions));
 
-connectDB(); 
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        success: true,
+        status: 'ok',
+        service: 'denote',
+        timestamp: new Date().toISOString()
+    });
+});
 
+app.use('/api/denote', generalLimiter);
+app.use('/api/denote', require('./routes/noteRoute'));
 
-app.use('/api/denote' , require('./routes/noteRoute'));
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+connectDB();
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {

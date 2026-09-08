@@ -43,6 +43,7 @@ function UploadNote({ onLogout }) {
       data.append('sem', formData.semester)
       data.append('subject', formData.subject)
       data.append('title', formData.title)
+      data.append('description', formData.description)
 
       const response = await notesAPI.upload(data)
       setSuccess(`Uploaded successfully. Opening your note…`)

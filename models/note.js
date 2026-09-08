@@ -40,6 +40,12 @@ const noteSchema = new mongoose.Schema({
     fileUrl: {
         type: String
     },
+    description: {
+        type: String,
+        trim: true,
+        maxlength: 500,
+        default: ''
+    },
     uploadedAt: {
         type: Date,
         default: Date.now,
@@ -60,6 +66,8 @@ const noteSchema = new mongoose.Schema({
     }
 });
 
-noteSchema.index({ title: 'text', subject: 'text', uploader: 'text', branch: 'text' });
+noteSchema.index({ title: 'text', subject: 'text', uploader: 'text', branch: 'text', description: 'text' });
+noteSchema.index({ branch: 1, sem: 1, subject: 1, uploadedAt: -1 });
+noteSchema.index({ uploaderId: 1, uploadedAt: -1 });
 
 module.exports = mongoose.model('Note', noteSchema);

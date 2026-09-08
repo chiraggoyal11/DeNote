@@ -68,7 +68,7 @@ function ForgotPassword() {
       <div className="auth-panel">
         <p className="auth-brand">DeNote</p>
         <p className="auth-lead">
-          Reset with your college email ({domainLabel}) or registered phone. Temporary OTP: <strong>123456</strong>
+          Reset with your college email ({domainLabel}) or registered phone.
         </p>
         <p className="auth-hint">{collegeEmailHint()}</p>
 

@@ -3,3 +3,9 @@ config.env
 .env
 frontend/.env
 yarn.lock
+*.log
+backend.log
+.DS_Store
+dist
+frontend/dist
+.vercel
