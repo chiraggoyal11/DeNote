@@ -5,7 +5,9 @@ module.exports = function(req, res, next) {
 
     if (!authHeader) {
         return res.status(401).json({
-            msg: "Auth. denied"
+            success: false,
+            msg: 'Please sign in to continue.',
+            code: 'NO_TOKEN'
         });
     }
 
@@ -15,17 +17,31 @@ module.exports = function(req, res, next) {
 
     if (!token) {
         return res.status(401).json({
-            msg: "Auth. denied"
+            success: false,
+            msg: 'Please sign in to continue.',
+            code: 'NO_TOKEN'
         });
     }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (!decoded?.user?.id) {
+            return res.status(401).json({
+                success: false,
+                msg: 'Invalid session. Please sign in again.',
+                code: 'INVALID_TOKEN'
+            });
+        }
         req.user = decoded.user;
         next();
     } catch (error) {
+        const expired = error?.name === 'TokenExpiredError';
         return res.status(401).json({
-            msg: "Error"
+            success: false,
+            msg: expired
+                ? 'Session expired. Please sign in again.'
+                : 'Invalid session. Please sign in again.',
+            code: expired ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN'
         });
     }
 }

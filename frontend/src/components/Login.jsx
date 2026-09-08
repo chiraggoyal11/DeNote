@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { authAPI } from '../api'
 import GoogleSignIn from './GoogleSignIn'
 import { collegeEmailHint, formatAllowedEmailDomains } from '../utils/collegeEmail'
@@ -7,9 +7,20 @@ import { collegeEmailHint, formatAllowedEmailDomains } from '../utils/collegeEma
 function Login({ onLogin }) {
   const [formData, setFormData] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const domainLabel = formatAllowedEmailDomains()
+
+  useEffect(() => {
+    const reason = searchParams.get('reason')
+    if (reason === 'expired') {
+      setInfo('Your session expired. Please sign in again with your @bmsce.ac.in account.')
+    } else if (reason === 'auth') {
+      setInfo('Please sign in again to continue.')
+    }
+  }, [searchParams])
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -28,6 +39,7 @@ function Login({ onLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setInfo('')
     setLoading(true)
     try {
       const response = await authAPI.login(formData)
@@ -43,6 +55,7 @@ function Login({ onLogin }) {
 
   const handleGoogle = async (credential) => {
     setError('')
+    setInfo('')
     setLoading(true)
     try {
       const response = await authAPI.googleAuth(credential)
@@ -65,6 +78,7 @@ function Login({ onLogin }) {
         <p className="auth-brand">DeNote</p>
         <p className="auth-lead">Sign in to upload and discover academic notes on IPFS.</p>
         <p className="auth-hint">{collegeEmailHint()}</p>
+        {info && <div className="success">{info}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
