@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authAPI } from '../api'
+import { collegeEmailHint, formatAllowedEmailDomains } from '../utils/collegeEmail'
 
 function ForgotPassword() {
   const [step, setStep] = useState(1)
@@ -14,6 +15,7 @@ function ForgotPassword() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const domainLabel = formatAllowedEmailDomains()
 
   const handleSendOtp = async (e) => {
     e.preventDefault()
@@ -66,22 +68,30 @@ function ForgotPassword() {
       <div className="auth-panel">
         <p className="auth-brand">DeNote</p>
         <p className="auth-lead">
-          Reset with the email or phone from registration. Temporary OTP: <strong>123456</strong>
+          Reset with your college email ({domainLabel}) or registered phone. Temporary OTP: <strong>123456</strong>
         </p>
+        <p className="auth-hint">{collegeEmailHint()}</p>
 
         {step === 1 ? (
           <form onSubmit={handleSendOtp}>
             <div className="form-group">
               <label htmlFor="channel">Reset via</label>
               <select id="channel" value={channel} onChange={(e) => setChannel(e.target.value)}>
-                <option value="email">Email</option>
+                <option value="email">College email</option>
                 <option value="phone">Phone</option>
               </select>
             </div>
             {channel === 'email' ? (
               <div className="form-group">
-                <label htmlFor="email">Email</label>
-                <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <label htmlFor="email">College email</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="you@bmsce.ac.in"
+                />
               </div>
             ) : (
               <div className="form-group">
