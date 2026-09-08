@@ -7,7 +7,7 @@ function signUserToken(user) {
                 id: user.id || user._id
             }
         };
-        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 3600 }, (err, token) => {
+        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' }, (err, token) => {
             if (err) reject(err);
             else resolve(token);
         });
