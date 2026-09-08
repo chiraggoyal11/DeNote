@@ -13,6 +13,7 @@ function AdminDashboard({ onLogout }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const role = localStorage.getItem('role') || 'student'
+  const isStaff = role === 'moderator' || role === 'admin'
   const isAdmin = role === 'admin'
 
   const load = async () => {
@@ -32,8 +33,20 @@ function AdminDashboard({ onLogout }) {
   }
 
   useEffect(() => {
-    load()
-  }, [])
+    if (isStaff) load()
+  }, [isStaff])
+
+  if (!isStaff) {
+    return (
+      <div className="container page-enter">
+        <AppNav onLogout={onLogout} />
+        <div className="error">Staff access required for moderation tools.</div>
+        <Link to="/dashboard" className="link" style={{ marginTop: '1rem', display: 'inline-block' }}>
+          Back to home
+        </Link>
+      </div>
+    )
+  }
 
   const searchUsers = async (e) => {
     e?.preventDefault?.()
