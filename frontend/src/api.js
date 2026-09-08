@@ -94,6 +94,8 @@ export const notesAPI = {
   previewUrl: (cid) => `${API_URL}/ifps/preview/${cid}`,
   resourceTypes: () => api.get('/meta/resource-types'),
   versions: (id) => api.get(`/ifps/${id}/versions`),
+  recordShare: (noteId) => api.post(`/ifps/${noteId}/share`),
+  analytics: () => api.get('/me/analytics'),
 }
 
 export const collectionsAPI = {

@@ -131,9 +131,12 @@ function PublicProfile({ onLogout }) {
 
         <div className="profile-stat-row">
           <span><strong>{stats.uploadCount || 0}</strong> uploads</span>
+          <span><strong>{stats.viewCount || 0}</strong> views</span>
+          <span><strong>{stats.downloadCount || 0}</strong> opens</span>
+          <span><strong>{stats.likeReceived || 0}</strong> upvotes</span>
+          <span><strong>{stats.saveCount || 0}</strong> saves</span>
           <span><strong>{stats.followerCount || 0}</strong> followers</span>
           <span><strong>{stats.followingCount || 0}</strong> following</span>
-          <span><strong>{stats.likeReceived || 0}</strong> upvotes</span>
         </div>
 
         <div className="action-row" style={{ marginTop: '1rem', flexWrap: 'wrap', gap: '0.55rem' }}>

@@ -55,6 +55,8 @@ function serializeNote(note, { userId = null, username = null, favoriteCids = nu
         likeCount,
         viewCount: doc.viewCount || 0,
         downloadCount: doc.downloadCount || 0,
+        favoriteCount: doc.favoriteCount || 0,
+        shareCount: doc.shareCount || 0,
         isVerified: Boolean(doc.isVerified),
         verifiedAt: doc.verifiedAt || null,
         qualityScore,

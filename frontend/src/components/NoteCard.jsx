@@ -40,7 +40,7 @@ export function NoteCard({
           )}
         </p>
         <p className="note-card-stats">
-          Quality {note.qualityScore ?? 0}/100 · {note.viewCount || 0} views · {note.likeCount || 0} upvotes
+          Quality {note.qualityScore ?? 0}/100 · {note.viewCount || 0} views · {note.downloadCount || 0} opens · {note.likeCount || 0} upvotes
         </p>
         {Array.isArray(note.tags) && note.tags.length > 0 && (
           <p className="tag-row">{note.tags.slice(0, 4).map((t) => `#${t}`).join(' ')}</p>

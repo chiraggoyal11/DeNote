@@ -124,6 +124,33 @@ function AdminDashboard({ onLogout }) {
             <div className="admin-stat"><strong>{stats.restrictedUsers}</strong><span>Restricted</span></div>
           </div>
 
+          {stats.engagement && (
+            <div className="admin-stat-grid" style={{ marginTop: '0.75rem' }}>
+              <div className="admin-stat"><strong>{stats.engagement.views}</strong><span>Platform views</span></div>
+              <div className="admin-stat"><strong>{stats.engagement.downloads}</strong><span>Platform opens</span></div>
+              <div className="admin-stat"><strong>{stats.engagement.likes}</strong><span>Platform upvotes</span></div>
+              <div className="admin-stat"><strong>{stats.engagement.saves}</strong><span>Platform saves</span></div>
+              <div className="admin-stat"><strong>{stats.engagement.shares}</strong><span>Platform shares</span></div>
+            </div>
+          )}
+
+          {Array.isArray(stats.topNotes) && stats.topNotes.length > 0 && (
+            <section className="panel" style={{ marginTop: '1rem' }}>
+              <h2 className="home-section-title" style={{ marginTop: 0 }}>Top notes by views</h2>
+              <ul className="admin-simple-list">
+                {stats.topNotes.map((n) => (
+                  <li key={n._id}>
+                    <Link to={`/note/${n.cid}`} className="link">{n.title}</Link>
+                    {' '}· @{n.uploader}
+                    <div className="page-sub">
+                      {n.viewCount || 0} views · {n.downloadCount || 0} opens · {n.likeCount || 0} upvotes · {n.favoriteCount || 0} saves · {n.shareCount || 0} shares
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section className="panel" style={{ marginTop: '1rem' }}>
             <h2 className="home-section-title" style={{ marginTop: 0 }}>Popular subjects</h2>
             <ul className="admin-simple-list">

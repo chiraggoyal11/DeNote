@@ -80,6 +80,17 @@ const noteSchema = new mongoose.Schema({
         default: 0,
         index: true
     },
+    // Denormalized save/share counters (Phase 5 analytics)
+    favoriteCount: {
+        type: Number,
+        default: 0,
+        index: true
+    },
+    shareCount: {
+        type: Number,
+        default: 0,
+        index: true
+    },
     // Role-gated verification (Phase 4 roles can flip this)
     isVerified: {
         type: Boolean,

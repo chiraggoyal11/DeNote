@@ -140,6 +140,10 @@ function Dashboard({ onLogout }) {
             <span>Use username & password or Google, with profile controls.</span>
           </li>
           <li>
+            <strong>Track engagement</strong>
+            <span>See views, opens, upvotes, saves, and shares on your Analytics page.</span>
+          </li>
+          <li>
             <strong>Own your account</strong>
             <span>Manage profile details or schedule account deletion anytime.</span>
           </li>
