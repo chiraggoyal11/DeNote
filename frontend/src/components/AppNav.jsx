@@ -72,6 +72,7 @@ function AppNav({ onLogout }) {
   )
 
   return (
+    <>
     <header className="topbar">
       <div className="topbar-left">
         <button
@@ -79,7 +80,7 @@ function AppNav({ onLogout }) {
           className="nav-menu-btn"
           aria-label={navOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={navOpen}
-          aria-controls="primary-nav"
+          aria-controls="primary-nav-drawer"
           onClick={() => setNavOpen((v) => !v)}
         >
           <span className="nav-menu-bars" aria-hidden="true" />
@@ -143,6 +144,7 @@ function AppNav({ onLogout }) {
           )}
         </div>
       </div>
+    </header>
 
       {navOpen && (
         <>
@@ -153,7 +155,7 @@ function AppNav({ onLogout }) {
           </nav>
         </>
       )}
-    </header>
+    </>
   )
 }
 
