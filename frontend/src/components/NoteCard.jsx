@@ -27,7 +27,7 @@ export function NoteCard({
       <div className="note-card-actions">
         <button
           type="button"
-          className={`chip-btn ${note.likedByMe ? 'is-active' : ''}`}
+          className={`chip-btn chip-upvote ${note.likedByMe ? 'is-active' : ''}`}
           onClick={(e) => {
             e.stopPropagation()
             onToggleLike?.(note)
@@ -35,11 +35,12 @@ export function NoteCard({
           aria-pressed={Boolean(note.likedByMe)}
           title={note.likedByMe ? 'Remove upvote' : 'Upvote'}
         >
-          ▲ {note.likeCount || 0}
+          <span className="chip-icon" aria-hidden="true">{note.likedByMe ? '▲' : '△'}</span>
+          <span className="chip-label">{note.likeCount || 0}</span>
         </button>
         <button
           type="button"
-          className={`chip-btn ${note.favoritedByMe ? 'is-active' : ''}`}
+          className={`chip-btn chip-save ${note.favoritedByMe ? 'is-active' : ''}`}
           onClick={(e) => {
             e.stopPropagation()
             onToggleFavorite?.(note)
@@ -47,7 +48,8 @@ export function NoteCard({
           aria-pressed={Boolean(note.favoritedByMe)}
           title={note.favoritedByMe ? 'Remove bookmark' : 'Save to favorites'}
         >
-          {note.favoritedByMe ? '★ Saved' : '☆ Save'}
+          <span className="chip-icon" aria-hidden="true">{note.favoritedByMe ? '★' : '☆'}</span>
+          <span className="chip-label">{note.favoritedByMe ? 'Saved' : 'Save'}</span>
         </button>
         {showOwnerActions && note.isOwner && (
           <button
