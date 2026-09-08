@@ -9,6 +9,7 @@ const Flashcard = require('../models/flashcard');
 const { purgeIfDue } = require('../utils/accountDeletion');
 const { getAiStatus, getProvider } = require('../utils/ai');
 const { AiDisabledError } = require('../utils/ai/disabledProvider');
+const { enrichNoteWithDocumentText, suggestedQuizCount } = require('../utils/ai/noteDocumentText');
 
 async function loadMe(req) {
     if (!req.user?.id) return null;
@@ -21,6 +22,12 @@ async function loadMe(req) {
 async function loadNoteForUser(noteId) {
     if (!mongoose.isValidObjectId(noteId)) return null;
     return Note.findById(noteId);
+}
+
+async function loadNoteWithDocument(noteId) {
+    const note = await loadNoteForUser(noteId);
+    if (!note) return null;
+    return enrichNoteWithDocumentText(note);
 }
 
 function handleAiError(err, res) {
@@ -51,7 +58,7 @@ router.post('/ai/summarize', user_jwt, async (req, res) => {
     try {
         const me = await loadMe(req);
         if (!me) return res.status(401).json({ success: false, msg: 'Auth. denied' });
-        const note = await loadNoteForUser(req.body.noteId);
+        const note = await loadNoteWithDocument(req.body.noteId);
         if (!note) return res.status(404).json({ success: false, msg: 'Note not found.' });
 
         const provider = await getProvider();
@@ -71,7 +78,7 @@ router.post('/ai/assist', user_jwt, async (req, res) => {
     try {
         const me = await loadMe(req);
         if (!me) return res.status(401).json({ success: false, msg: 'Auth. denied' });
-        const note = await loadNoteForUser(req.body.noteId);
+        const note = await loadNoteWithDocument(req.body.noteId);
         if (!note) return res.status(404).json({ success: false, msg: 'Note not found.' });
         const question = String(req.body.question || '').trim().slice(0, 500);
 
@@ -119,9 +126,13 @@ router.post('/ai/generate-quiz', user_jwt, async (req, res) => {
     try {
         const me = await loadMe(req);
         if (!me) return res.status(401).json({ success: false, msg: 'Auth. denied' });
-        const note = await loadNoteForUser(req.body.noteId);
+        const note = await loadNoteWithDocument(req.body.noteId);
         if (!note) return res.status(404).json({ success: false, msg: 'Note not found.' });
-        const count = Math.min(12, Math.max(3, parseInt(req.body.count, 10) || 5));
+        // Omit count (or pass null) to auto-scale with document length
+        const rawCount = req.body.count;
+        const count = rawCount == null || rawCount === '' || rawCount === 'auto'
+            ? undefined
+            : Math.min(20, Math.max(3, parseInt(rawCount, 10) || suggestedQuizCount(note.documentText)));
 
         const provider = await getProvider();
         const result = await provider.generateQuiz({ note, count });
@@ -140,9 +151,12 @@ router.post('/ai/generate-flashcards', user_jwt, async (req, res) => {
     try {
         const me = await loadMe(req);
         if (!me) return res.status(401).json({ success: false, msg: 'Auth. denied' });
-        const note = await loadNoteForUser(req.body.noteId);
+        const note = await loadNoteWithDocument(req.body.noteId);
         if (!note) return res.status(404).json({ success: false, msg: 'Note not found.' });
-        const count = Math.min(20, Math.max(3, parseInt(req.body.count, 10) || 6));
+        const rawCount = req.body.count;
+        const count = rawCount == null || rawCount === '' || rawCount === 'auto'
+            ? undefined
+            : Math.min(20, Math.max(3, parseInt(rawCount, 10) || 6));
         const saveToDeck = Boolean(req.body.saveToDeck);
 
         const provider = await getProvider();
