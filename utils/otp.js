@@ -13,10 +13,8 @@ function isHardcodedOtpEnabled() {
     return process.env.OTP_HARDCODED === 'true';
 }
 
-const useHardcodedOtp = isHardcodedOtpEnabled();
-
 function generateOtp() {
-    if (useHardcodedOtp) {
+    if (isHardcodedOtpEnabled()) {
         return HARDCODED_OTP;
     }
     return String(crypto.randomInt(100000, 999999));
@@ -29,7 +27,7 @@ async function hashOtp(otp) {
 
 async function verifyOtp(otp, otpHash) {
     if (!otp || !otpHash) return false;
-    if (useHardcodedOtp && String(otp) === HARDCODED_OTP) {
+    if (isHardcodedOtpEnabled() && String(otp) === HARDCODED_OTP) {
         return true;
     }
     return bcryptjs.compare(String(otp), otpHash);
@@ -37,7 +35,9 @@ async function verifyOtp(otp, otpHash) {
 
 module.exports = {
     HARDCODED_OTP,
-    useHardcodedOtp,
+    get useHardcodedOtp() {
+        return isHardcodedOtpEnabled();
+    },
     isHardcodedOtpEnabled,
     generateOtp,
     hashOtp,
