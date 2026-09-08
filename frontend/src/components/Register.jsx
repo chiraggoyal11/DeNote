@@ -2,6 +2,12 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authAPI } from '../api'
 import GoogleSignIn from './GoogleSignIn'
+import {
+  collegeEmailHint,
+  collegeEmailRequiredMsg,
+  formatAllowedEmailDomains,
+  isAllowedCollegeEmail
+} from '../utils/collegeEmail'
 
 function Register({ onLogin }) {
   const [formData, setFormData] = useState({
@@ -14,6 +20,7 @@ function Register({ onLogin }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const domainLabel = formatAllowedEmailDomains()
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -33,8 +40,12 @@ function Register({ onLogin }) {
     e.preventDefault()
     setError('')
 
-    if (!formData.email.trim() && !formData.phone.trim()) {
-      setError('Provide an email or phone number for password recovery.')
+    if (!formData.email.trim()) {
+      setError(collegeEmailRequiredMsg())
+      return
+    }
+    if (!isAllowedCollegeEmail(formData.email)) {
+      setError(collegeEmailRequiredMsg())
       return
     }
     if (formData.password !== formData.confirmPassword) {
@@ -82,6 +93,7 @@ function Register({ onLogin }) {
       <div className="auth-panel">
         <p className="auth-brand">DeNote</p>
         <p className="auth-lead">Create an account to share and find course notes on decentralized storage.</p>
+        <p className="auth-hint">{collegeEmailHint()}</p>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -89,14 +101,23 @@ function Register({ onLogin }) {
             <input id="username" type="text" name="username" value={formData.username} onChange={handleChange} required />
           </div>
           <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input id="email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@example.com" />
+            <label htmlFor="email">College email</label>
+            <input
+              id="email"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="you@bmsce.ac.in"
+              required
+              autoComplete="email"
+            />
           </div>
           <div className="form-group">
-            <label htmlFor="phone">Phone</label>
+            <label htmlFor="phone">Phone (optional)</label>
             <input id="phone" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+9198XXXXXXXX" />
           </div>
-          <p className="auth-hint">Email or phone is required for password reset.</p>
+          <p className="auth-hint">College email ({domainLabel}) is required. Phone is optional for recovery.</p>
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <input id="password" type="password" name="password" value={formData.password} onChange={handleChange} required minLength={6} />
@@ -112,6 +133,7 @@ function Register({ onLogin }) {
         </form>
 
         <div className="auth-divider"><span>or</span></div>
+        <p className="auth-hint">Google must use the same {domainLabel} account.</p>
         <GoogleSignIn onCredential={handleGoogle} disabled={loading} />
 
         <p className="auth-footer">

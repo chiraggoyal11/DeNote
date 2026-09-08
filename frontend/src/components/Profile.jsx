@@ -305,13 +305,14 @@ function Profile({ onLogout }) {
                 />
               </label>
               <label>
-                Email
+                College email
                 <input
                   type="email"
                   name="email"
                   value={form.email}
                   onChange={handleFormChange}
-                  placeholder="you@college.edu"
+                  placeholder="you@bmsce.ac.in"
+                  required
                   autoComplete="email"
                 />
               </label>
@@ -372,7 +373,7 @@ function Profile({ onLogout }) {
               </label>
             </div>
             <p className="auth-hint">
-              Username must be unique (letters, numbers, underscore). Keep email/phone current for recovery.
+              Username must be unique. College email must stay on the allowed domain (e.g. @bmsce.ac.in).
             </p>
             <div className="profile-edit-actions">
               <button type="submit" className="btn btn-inline" disabled={busy}>

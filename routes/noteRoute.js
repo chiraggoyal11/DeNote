@@ -22,6 +22,11 @@ const {
     loadFavoriteSets,
     buildNotesQuery
 } = require('../utils/notesHelpers');
+const {
+    isAllowedCollegeEmail,
+    collegeEmailRequiredMsg,
+    collegeEmailDeniedMsg
+} = require('../utils/collegeEmail');
 
 const memory=multer.memoryStorage();
 const upload=multer({memory: memory});
@@ -39,6 +44,16 @@ function normalizePhone(phone) {
 
 function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function assertCollegeEmail(email) {
+    if (!email || !isValidEmail(email)) {
+        return { ok: false, msg: collegeEmailRequiredMsg() };
+    }
+    if (!isAllowedCollegeEmail(email)) {
+        return { ok: false, msg: collegeEmailDeniedMsg() };
+    }
+    return { ok: true };
 }
 
 function isValidPhone(phone) {
@@ -177,10 +192,11 @@ router.put('/account/profile', user_jwt, async (req, res) => {
             });
         }
 
-        if (emailRaw && !isValidEmail(emailRaw)) {
+        const emailCheck = assertCollegeEmail(emailRaw);
+        if (!emailCheck.ok) {
             return res.status(400).json({
                 success: false,
-                msg: "Invalid email address."
+                msg: emailCheck.msg
             });
         }
 
@@ -191,7 +207,7 @@ router.put('/account/profile', user_jwt, async (req, res) => {
             });
         }
 
-        if (emailRaw) {
+        {
             const emailTaken = await User.findOne({
                 email: emailRaw,
                 _id: { $ne: user._id }
@@ -223,9 +239,7 @@ router.put('/account/profile', user_jwt, async (req, res) => {
         user.college = college || undefined;
         user.branch = branch || undefined;
         user.semester = semester || undefined;
-
-        if (emailRaw) user.email = emailRaw;
-        else user.email = undefined;
+        user.email = emailRaw;
 
         if (phoneRaw) user.phone = phoneRaw;
         else user.phone = undefined;
@@ -245,8 +259,8 @@ router.put('/account/profile', user_jwt, async (req, res) => {
         }
 
         // Ensure cleared unique fields are removed from the document.
+        // College email is required — never unset email.
         const unset = {};
-        if (!emailRaw) unset.email = 1;
         if (!phoneRaw) unset.phone = 1;
         if (!displayName) unset.displayName = 1;
         if (!bio) unset.bio = 1;
@@ -297,17 +311,11 @@ router.post('/register', async (req,res,next) => {
         const normalizedEmail = normalizeEmail(email);
         const normalizedPhone = normalizePhone(phone);
 
-        if (!normalizedEmail && !normalizedPhone) {
+        const emailCheck = assertCollegeEmail(normalizedEmail);
+        if (!emailCheck.ok) {
             return res.status(400).json({
                 success: false,
-                msg: "Provide an email or phone number for verification and password recovery."
-            });
-        }
-
-        if (normalizedEmail && !isValidEmail(normalizedEmail)) {
-            return res.status(400).json({
-                success: false,
-                msg: "Invalid email address."
+                msg: emailCheck.msg
             });
         }
 
@@ -326,7 +334,7 @@ router.post('/register', async (req,res,next) => {
             });
         }
 
-        if (normalizedEmail) {
+        {
             const emailExists = await User.findOne({ email: normalizedEmail });
             if (emailExists) {
                 return res.status(400).json({
@@ -348,7 +356,7 @@ router.post('/register', async (req,res,next) => {
 
         let user=new User();
         user.username=username;
-        if (normalizedEmail) user.email = normalizedEmail;
+        user.email = normalizedEmail;
         if (normalizedPhone) user.phone = normalizedPhone;
         user.authProvider = 'local';
 
@@ -389,6 +397,14 @@ router.post('/login' , async (req,res,next)=> {
             return res.status(400).json({
                 success: false,
                 msg: "This account was deleted after the scheduled grace period."
+            });
+        }
+
+        const loginEmailCheck = assertCollegeEmail(normalizeEmail(user.email));
+        if (!loginEmailCheck.ok) {
+            return res.status(403).json({
+                success: false,
+                msg: collegeEmailDeniedMsg()
             });
         }
 
@@ -435,6 +451,16 @@ router.post('/forgot-password', async (req, res) => {
         }
 
         const query = email ? { email } : { phone };
+        if (email) {
+            const emailCheck = assertCollegeEmail(email);
+            if (!emailCheck.ok) {
+                return res.status(403).json({
+                    success: false,
+                    msg: emailCheck.msg
+                });
+            }
+        }
+
         const user = await User.findOne(query);
 
         if (!user) {
@@ -443,6 +469,14 @@ router.post('/forgot-password', async (req, res) => {
                 msg: email
                     ? "No account found with this email."
                     : "No account found with this phone number."
+            });
+        }
+
+        const accountEmailCheck = assertCollegeEmail(normalizeEmail(user.email));
+        if (!accountEmailCheck.ok) {
+            return res.status(403).json({
+                success: false,
+                msg: collegeEmailDeniedMsg()
             });
         }
 
@@ -517,6 +551,14 @@ router.post('/reset-password', async (req, res) => {
             });
         }
 
+        const resetEmailCheck = assertCollegeEmail(normalizeEmail(user.email));
+        if (!resetEmailCheck.ok) {
+            return res.status(403).json({
+                success: false,
+                msg: collegeEmailDeniedMsg()
+            });
+        }
+
         if (!user.otpExpires || user.otpExpires.getTime() < Date.now()) {
             return res.status(400).json({
                 success: false,
@@ -580,6 +622,14 @@ router.post('/auth/google', async (req, res) => {
         const displayName = payload.name || payload.given_name || (email ? email.split('@')[0] : `user_${googleId.slice(0, 8)}`);
         const picture = payload.picture || '';
         const name = displayName;
+
+        const googleEmailCheck = assertCollegeEmail(email);
+        if (!googleEmailCheck.ok) {
+            return res.status(403).json({
+                success: false,
+                msg: googleEmailCheck.msg
+            });
+        }
 
         let user = await User.findOne({
             $or: [
