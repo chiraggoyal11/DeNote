@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { notesAPI } from '../api'
 import AppNav from './AppNav'
 import { EmptyNotes, NoteCard, Pagination } from './NoteCard'
+import { NotesGridSkeleton } from './Skeleton'
 
 function MyUploads({ onLogout }) {
   const [notes, setNotes] = useState([])
@@ -79,8 +80,8 @@ function MyUploads({ onLogout }) {
         <button type="submit" className="btn btn-inline">Search</button>
       </form>
 
-      {loading && <p className="loading">Loading your notes…</p>}
-      {error && <div className="error">{error}</div>}
+      {loading && <NotesGridSkeleton count={4} />}
+      {error && <div className="error" role="alert">{error}</div>}
 
       {!loading && notes.length === 0 && (
         <EmptyNotes title="You haven’t uploaded any notes yet." actionTo="/upload" actionLabel="Upload a note" />

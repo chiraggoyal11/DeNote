@@ -4,6 +4,7 @@ import { adminAPI, collectionsAPI, notesAPI } from '../api'
 import AppNav from './AppNav'
 import CommentSection from './CommentSection'
 import AiPanel from './AiPanel'
+import { PageSkeleton } from './Skeleton'
 
 const IPFS_GATEWAY = (import.meta.env.VITE_IPFS_GATEWAY || 'https://gateway.pinata.cloud/ipfs/').replace(/\/?$/, '/')
 
@@ -170,8 +171,9 @@ function NoteView({ onLogout }) {
 
   if (loading) {
     return (
-      <div className="container">
-        <div className="loading">Loading note…</div>
+      <div className="container page-enter">
+        <AppNav onLogout={onLogout} />
+        <PageSkeleton rows={5} />
       </div>
     )
   }
@@ -180,7 +182,7 @@ function NoteView({ onLogout }) {
     return (
       <div className="container page-enter">
         <AppNav onLogout={onLogout} />
-        <div className="error">{error}</div>
+        <div className="error" role="alert">{error}</div>
         <Link to="/notes" className="link" style={{ marginTop: '1rem', display: 'inline-block' }}>Back to notes</Link>
       </div>
     )
@@ -190,7 +192,7 @@ function NoteView({ onLogout }) {
     <div className="container page-enter">
       <AppNav onLogout={onLogout} />
 
-      <div className="page-head">
+      <div className="page-head note-detail-head">
         <div>
           <Link to="/notes" className="link">← Back to browse</Link>
           <h1 className="page-title" style={{ marginTop: '0.65rem' }}>
@@ -199,164 +201,165 @@ function NoteView({ onLogout }) {
             {note?.title || 'Untitled note'}
             {note?.version ? <span className="type-chip" style={{ marginLeft: '0.5rem' }}>v{note.version}</span> : null}
           </h1>
+          <p className="page-sub note-detail-kicker">
+            {[note?.resourceTypeLabel || 'Notes', note?.subject, note?.branch && `Branch ${note.branch}`, note?.sem && `Sem ${note.sem}`]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
         </div>
       </div>
 
-      <section className="panel">
-        <div className="meta-grid">
-          <p><strong>Type:</strong> {note?.resourceTypeLabel || 'Notes'}</p>
-          <p><strong>Subject:</strong> {note?.subject || 'N/A'}</p>
-          <p><strong>Branch:</strong> {note?.branch || 'N/A'}</p>
-          <p><strong>Semester:</strong> {note?.sem || 'N/A'}</p>
-          {note?.college ? <p><strong>College:</strong> {note.college}</p> : null}
-          <p>
-            <strong>Uploader:</strong>{' '}
-            {note?.uploader ? (
-              <Link to={`/u/${note.uploader}`} className="link">@{note.uploader}</Link>
-            ) : (
-              '@Anonymous'
-            )}
-          </p>
-          <p><strong>Quality:</strong> {note?.qualityScore ?? 0}/100</p>
-          <p><strong>Views:</strong> {note?.viewCount || 0}</p>
-          <p><strong>Opens:</strong> {note?.downloadCount || 0}</p>
-          <p><strong>Saves:</strong> {note?.favoriteCount || 0}</p>
-          <p><strong>Shares:</strong> {note?.shareCount || 0}</p>
-          <p><strong>Version:</strong> v{note?.version || 1}{note?.isLatest ? ' (latest)' : ''}</p>
-          <p><strong>CID:</strong> <code>{cid}</code></p>
-        </div>
+      <div className="note-detail-layout">
+        <aside className="note-detail-sidebar panel">
+          <h2 className="note-aside-title">Details</h2>
+          <dl className="meta-list">
+            <div><dt>Uploader</dt><dd>{note?.uploader ? <Link to={`/u/${note.uploader}`} className="link">@{note.uploader}</Link> : '@Anonymous'}</dd></div>
+            <div><dt>Quality</dt><dd>{note?.qualityScore ?? 0}/100</dd></div>
+            <div><dt>Views</dt><dd>{note?.viewCount || 0}</dd></div>
+            <div><dt>Opens</dt><dd>{note?.downloadCount || 0}</dd></div>
+            <div><dt>Saves</dt><dd>{note?.favoriteCount || 0}</dd></div>
+            <div><dt>Shares</dt><dd>{note?.shareCount || 0}</dd></div>
+            <div><dt>Version</dt><dd>v{note?.version || 1}{note?.isLatest ? ' (latest)' : ''}</dd></div>
+            {note?.college ? <div><dt>College</dt><dd>{note.college}</dd></div> : null}
+            {note?.university ? <div><dt>University</dt><dd>{note.university}</dd></div> : null}
+            {note?.examYear ? <div><dt>Year</dt><dd>{note.examYear}</dd></div> : null}
+            {note?.examType ? <div><dt>Exam</dt><dd>{note.examType}</dd></div> : null}
+          </dl>
+          <p className="cid-chip" style={{ marginTop: '0.75rem', wordBreak: 'break-all' }}>{cid}</p>
+          {Array.isArray(note?.tags) && note.tags.length > 0 && (
+            <p className="tag-row" style={{ marginTop: '0.75rem' }}>
+              {note.tags.map((t) => `#${t}`).join(' ')}
+            </p>
+          )}
+          {note?.description ? (
+            <p className="note-description" style={{ marginTop: '0.85rem' }}>{note.description}</p>
+          ) : null}
+          {note?.changelog ? (
+            <p className="auth-hint" style={{ marginTop: '0.65rem' }}>Changes: {note.changelog}</p>
+          ) : null}
+        </aside>
 
-        {note?.changelog ? (
-          <p className="auth-hint" style={{ marginTop: '0.75rem' }}>Changes: {note.changelog}</p>
-        ) : null}
-
-        {note?.qualityScoreExplanation ? (
-          <p className="auth-hint" style={{ marginTop: '0.75rem' }}>{note.qualityScoreExplanation}</p>
-        ) : null}
-
-        {Array.isArray(note?.tags) && note.tags.length > 0 && (
-          <p className="tag-row" style={{ marginTop: '0.75rem' }}>
-            {note.tags.map((t) => `#${t}`).join(' ')}
-          </p>
-        )}
-
-        {(note?.examYear || note?.examType || note?.university) && (
-          <div className="meta-grid" style={{ marginTop: '0.75rem' }}>
-            {note.university ? <p><strong>University:</strong> {note.university}</p> : null}
-            {note.examYear ? <p><strong>Year:</strong> {note.examYear}</p> : null}
-            {note.examType ? <p><strong>Exam:</strong> {note.examType}</p> : null}
-          </div>
-        )}
-
-        {note?.description ? (
-          <p className="note-description" style={{ marginTop: '1rem' }}>{note.description}</p>
-        ) : null}
-
-        <div className="action-row note-view-actions" style={{ marginTop: '1.25rem', alignItems: 'center' }}>
-          <button
-            type="button"
-            className={`chip-btn chip-upvote chip-lg ${note?.likedByMe ? 'is-active' : ''}`}
-            onClick={handleToggleLike}
-            disabled={busy}
-            aria-pressed={Boolean(note?.likedByMe)}
-          >
-            <span className="chip-icon" aria-hidden="true">{note?.likedByMe ? '▲' : '△'}</span>
-            <span className="chip-label">{note?.likedByMe ? 'Upvoted' : 'Upvote'} · {note?.likeCount || 0}</span>
-          </button>
-          <button
-            type="button"
-            className={`chip-btn chip-save chip-lg ${note?.favoritedByMe ? 'is-active' : ''}`}
-            onClick={handleToggleFavorite}
-            disabled={busy}
-            aria-pressed={Boolean(note?.favoritedByMe)}
-          >
-            <span className="chip-icon" aria-hidden="true">{note?.favoritedByMe ? '★' : '☆'}</span>
-            <span className="chip-label">{note?.favoritedByMe ? 'Saved' : 'Save'}</span>
-          </button>
-          <a className="btn btn-inline btn-secondary" href={openUrl} target="_blank" rel="noopener noreferrer">
-            Open on IPFS
-          </a>
-          <button
-            type="button"
-            className="btn btn-secondary btn-inline"
-            onClick={async () => {
-              const url = `${window.location.origin}/note/${cid}`
-              try {
-                await navigator.clipboard.writeText(url)
-                setShareMsg('Note link copied')
-              } catch {
-                setShareMsg(url)
-              }
-              if (note?._id) {
-                try {
-                  const res = await notesAPI.recordShare(note._id)
-                  const count = res.data.shareCount
-                  if (typeof count === 'number') {
-                    setNote((n) => ({ ...n, shareCount: count }))
+        <div className="note-detail-main">
+          <section className="panel note-action-bar" aria-label="Note actions">
+            <div className="action-row note-view-actions" style={{ alignItems: 'center' }}>
+              <button
+                type="button"
+                className={`chip-btn chip-upvote chip-lg ${note?.likedByMe ? 'is-active' : ''}`}
+                onClick={handleToggleLike}
+                disabled={busy}
+                aria-pressed={Boolean(note?.likedByMe)}
+              >
+                <span className="chip-icon" aria-hidden="true">{note?.likedByMe ? '▲' : '△'}</span>
+                <span className="chip-label">{note?.likedByMe ? 'Upvoted' : 'Upvote'} · {note?.likeCount || 0}</span>
+              </button>
+              <button
+                type="button"
+                className={`chip-btn chip-save chip-lg ${note?.favoritedByMe ? 'is-active' : ''}`}
+                onClick={handleToggleFavorite}
+                disabled={busy}
+                aria-pressed={Boolean(note?.favoritedByMe)}
+              >
+                <span className="chip-icon" aria-hidden="true">{note?.favoritedByMe ? '★' : '☆'}</span>
+                <span className="chip-label">{note?.favoritedByMe ? 'Saved' : 'Save'}</span>
+              </button>
+              <a className="btn btn-inline btn-secondary" href={openUrl} target="_blank" rel="noopener noreferrer">
+                Open on IPFS
+              </a>
+              <button
+                type="button"
+                className="btn btn-secondary btn-inline"
+                onClick={async () => {
+                  const url = `${window.location.origin}/note/${cid}`
+                  try {
+                    await navigator.clipboard.writeText(url)
+                    setShareMsg('Note link copied')
+                  } catch {
+                    setShareMsg(url)
                   }
-                } catch {
-                  /* non-blocking */
-                }
-              }
-            }}
-          >
-            Copy link
-          </button>
-          {note?.isOwner && (
-            <Link className="btn btn-inline" to={`/upload?versionOf=${note._id}`}>
-              Upload new version
-            </Link>
-          )}
-          {note?.isOwner && (
-            <button type="button" onClick={handleDelete} className="btn btn-danger btn-inline">
-              Delete note
-            </button>
-          )}
-          {!note?.isOwner && (
-            <button type="button" className="btn btn-secondary btn-inline" disabled={busy} onClick={handleReport}>
-              Report
-            </button>
-          )}
-          {isStaff && (
-            <>
-              {!note?.isVerified ? (
-                <button type="button" className="btn btn-inline" disabled={busy} onClick={() => handleStaffVerify(false)}>
-                  Verify
-                </button>
-              ) : (
-                <button type="button" className="btn btn-secondary btn-inline" disabled={busy} onClick={() => handleStaffVerify(true)}>
-                  Unverify
+                  if (note?._id) {
+                    try {
+                      const res = await notesAPI.recordShare(note._id)
+                      const count = res.data.shareCount
+                      if (typeof count === 'number') {
+                        setNote((n) => ({ ...n, shareCount: count }))
+                      }
+                    } catch {
+                      /* non-blocking */
+                    }
+                  }
+                }}
+              >
+                Copy link
+              </button>
+              {note?.isOwner && (
+                <Link className="btn btn-inline" to={`/upload?versionOf=${note._id}`}>
+                  Upload new version
+                </Link>
+              )}
+              {note?.isOwner && (
+                <button type="button" onClick={handleDelete} className="btn btn-danger btn-inline">
+                  Delete note
                 </button>
               )}
-              <button type="button" className="btn btn-danger btn-inline" disabled={busy} onClick={handleStaffRemove}>
-                Staff remove
-              </button>
-            </>
-          )}
-        </div>
-        {modMsg && <p className="page-sub" style={{ marginTop: '0.65rem' }}>{modMsg}</p>}
+              {!note?.isOwner && (
+                <button type="button" className="btn btn-secondary btn-inline" disabled={busy} onClick={handleReport}>
+                  Report
+                </button>
+              )}
+              {isStaff && (
+                <>
+                  {!note?.isVerified ? (
+                    <button type="button" className="btn btn-inline" disabled={busy} onClick={() => handleStaffVerify(false)}>
+                      Verify
+                    </button>
+                  ) : (
+                    <button type="button" className="btn btn-secondary btn-inline" disabled={busy} onClick={() => handleStaffVerify(true)}>
+                      Unverify
+                    </button>
+                  )}
+                  <button type="button" className="btn btn-danger btn-inline" disabled={busy} onClick={handleStaffRemove}>
+                    Staff remove
+                  </button>
+                </>
+              )}
+            </div>
+            {modMsg && <p className="page-sub" role="status" style={{ marginTop: '0.65rem' }}>{modMsg}</p>}
+            {shareMsg && <p className="page-sub" role="status">{shareMsg}</p>}
 
-        <div className="collection-add-row">
-          <select
-            aria-label="Add to collection"
-            value={collectionId}
-            onChange={(e) => setCollectionId(e.target.value)}
-          >
-            <option value="">Add to collection…</option>
-            {collections.map((c) => (
-              <option key={c._id} value={c._id}>{c.name}</option>
-            ))}
-          </select>
-          <button type="button" className="btn btn-secondary btn-inline" disabled={!collectionId || busy} onClick={handleAddToCollection}>
-            Add
-          </button>
-          {collections.length === 0 && (
-            <Link to="/collections" className="link">Create a collection</Link>
-          )}
+            <div className="collection-add-row">
+              <select
+                aria-label="Add to collection"
+                value={collectionId}
+                onChange={(e) => setCollectionId(e.target.value)}
+              >
+                <option value="">Add to collection…</option>
+                {collections.map((c) => (
+                  <option key={c._id} value={c._id}>{c.name}</option>
+                ))}
+              </select>
+              <button type="button" className="btn btn-secondary btn-inline" disabled={!collectionId || busy} onClick={handleAddToCollection}>
+                Add
+              </button>
+              {collections.length === 0 && (
+                <Link to="/collections" className="link">Create a collection</Link>
+              )}
+            </div>
+            {collectionMsg && <p className="page-sub" role="status">{collectionMsg}</p>}
+          </section>
+
+          <section className="panel note-preview-panel">
+            <div className="note-preview-head">
+              <h2 className="home-section-title" style={{ marginTop: 0 }}>Preview</h2>
+              <p className="page-sub">If the preview stays blank, use Open on IPFS.</p>
+            </div>
+            <iframe
+              title={`Preview ${note?.title || 'note'}`}
+              src={previewUrl}
+              className="preview-frame preview-frame-premium"
+            />
+          </section>
         </div>
-        {collectionMsg && <p className="page-sub">{collectionMsg}</p>}
-        {shareMsg && <p className="page-sub">{shareMsg}</p>}
-      </section>
+      </div>
 
       {note?._id && <AiPanel noteId={note._id} noteTitle={note.title} />}
 
@@ -377,16 +380,6 @@ function NoteView({ onLogout }) {
           </ul>
         </section>
       )}
-
-      <section className="section">
-        <h2>Preview</h2>
-        <p className="page-sub">If the preview stays blank, use Open on IPFS.</p>
-        <iframe
-          className="preview-frame"
-          src={previewUrl}
-          title="Note preview"
-        />
-      </section>
     </div>
   )
 }

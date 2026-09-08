@@ -43,6 +43,8 @@ function App() {
   return (
     <Router>
       <div className="App">
+        <a href="#main-content" className="skip-link">Skip to content</a>
+        <main id="main-content" tabIndex={-1}>
         <Routes>
           <Route
             path="/login"
@@ -118,6 +120,7 @@ function App() {
           />
           <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
         </Routes>
+        </main>
       </div>
     </Router>
   )

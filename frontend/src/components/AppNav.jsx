@@ -11,6 +11,7 @@ function initialsFrom(name) {
 
 function AppNav({ onLogout }) {
   const [open, setOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
   const menuRef = useRef(null)
   const username = localStorage.getItem('username') || 'User'
   const displayName = localStorage.getItem('displayName') || username
@@ -25,7 +26,10 @@ function AppNav({ onLogout }) {
       }
     }
     const onKey = (e) => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') {
+        setOpen(false)
+        setNavOpen(false)
+      }
     }
     document.addEventListener('mousedown', onDocClick)
     document.addEventListener('keydown', onKey)
@@ -34,6 +38,11 @@ function AppNav({ onLogout }) {
       document.removeEventListener('keydown', onKey)
     }
   }, [])
+
+  useEffect(() => {
+    document.body.classList.toggle('nav-drawer-open', navOpen)
+    return () => document.body.classList.remove('nav-drawer-open')
+  }, [navOpen])
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -45,24 +54,43 @@ function AppNav({ onLogout }) {
     window.location.href = '/login'
   }
 
+  const closeNav = () => setNavOpen(false)
+
+  const navLinks = (
+    <>
+      <NavLink to="/dashboard" onClick={closeNav}>Home</NavLink>
+      <NavLink to="/notes" onClick={closeNav}>Browse</NavLink>
+      <NavLink to="/activity" onClick={closeNav}>Following</NavLink>
+      <NavLink to="/collections" onClick={closeNav}>Collections</NavLink>
+      <NavLink to="/my-uploads" onClick={closeNav}>My uploads</NavLink>
+      <NavLink to="/analytics" onClick={closeNav}>Analytics</NavLink>
+      <NavLink to="/study" onClick={closeNav}>Study</NavLink>
+      <NavLink to="/favorites" onClick={closeNav}>Favorites</NavLink>
+      {isStaff && <NavLink to="/admin" onClick={closeNav}>Moderation</NavLink>}
+      <NavLink to="/upload" className="nav-cta" onClick={closeNav}>Upload</NavLink>
+    </>
+  )
+
   return (
+    <>
     <header className="topbar">
       <div className="topbar-left">
-        <Link to="/dashboard" className="brand">
+        <button
+          type="button"
+          className="nav-menu-btn"
+          aria-label={navOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={navOpen}
+          aria-controls="primary-nav-drawer"
+          onClick={() => setNavOpen((v) => !v)}
+        >
+          <span className="nav-menu-bars" aria-hidden="true" />
+        </button>
+        <Link to="/dashboard" className="brand" onClick={closeNav}>
           <span className="brand-mark" aria-hidden="true" />
           <span className="brand-name">DeNote</span>
         </Link>
-        <nav className="topbar-nav" aria-label="Main">
-          <NavLink to="/dashboard">Home</NavLink>
-          <NavLink to="/notes">Browse</NavLink>
-          <NavLink to="/activity">Following</NavLink>
-          <NavLink to="/collections">Collections</NavLink>
-          <NavLink to="/my-uploads">My uploads</NavLink>
-          <NavLink to="/analytics">Analytics</NavLink>
-          <NavLink to="/study">Study</NavLink>
-          <NavLink to="/favorites">Favorites</NavLink>
-          {isStaff && <NavLink to="/admin">Moderation</NavLink>}
-          <NavLink to="/upload" className="nav-cta">Upload</NavLink>
+        <nav id="primary-nav" className="topbar-nav topbar-nav-desktop" aria-label="Main">
+          {navLinks}
         </nav>
       </div>
 
@@ -91,60 +119,25 @@ function AppNav({ onLogout }) {
                 <span className="profile-dropdown-name">{displayName}</span>
                 <span className="profile-dropdown-hint">@{username}</span>
               </div>
-              <Link
-                to={`/u/${username}`}
-                role="menuitem"
-                className="profile-dropdown-item"
-                onClick={() => setOpen(false)}
-              >
+              <Link to={`/u/${username}`} role="menuitem" className="profile-dropdown-item" onClick={() => setOpen(false)}>
                 Public profile
               </Link>
-              <Link
-                to="/my-uploads"
-                role="menuitem"
-                className="profile-dropdown-item"
-                onClick={() => setOpen(false)}
-              >
+              <Link to="/my-uploads" role="menuitem" className="profile-dropdown-item" onClick={() => setOpen(false)}>
                 My uploads
               </Link>
-              <Link
-                to="/analytics"
-                role="menuitem"
-                className="profile-dropdown-item"
-                onClick={() => setOpen(false)}
-              >
+              <Link to="/analytics" role="menuitem" className="profile-dropdown-item" onClick={() => setOpen(false)}>
                 Analytics
               </Link>
-              <Link
-                to="/study"
-                role="menuitem"
-                className="profile-dropdown-item"
-                onClick={() => setOpen(false)}
-              >
+              <Link to="/study" role="menuitem" className="profile-dropdown-item" onClick={() => setOpen(false)}>
                 Study
               </Link>
-              <Link
-                to="/favorites"
-                role="menuitem"
-                className="profile-dropdown-item"
-                onClick={() => setOpen(false)}
-              >
+              <Link to="/favorites" role="menuitem" className="profile-dropdown-item" onClick={() => setOpen(false)}>
                 Favorites
               </Link>
-              <Link
-                to="/profile"
-                role="menuitem"
-                className="profile-dropdown-item"
-                onClick={() => setOpen(false)}
-              >
+              <Link to="/profile" role="menuitem" className="profile-dropdown-item" onClick={() => setOpen(false)}>
                 Profile details
               </Link>
-              <button
-                type="button"
-                role="menuitem"
-                className="profile-dropdown-item"
-                onClick={handleLogout}
-              >
+              <button type="button" role="menuitem" className="profile-dropdown-item" onClick={handleLogout}>
                 Log out
               </button>
             </div>
@@ -152,6 +145,17 @@ function AppNav({ onLogout }) {
         </div>
       </div>
     </header>
+
+      {navOpen && (
+        <>
+          <button type="button" className="nav-drawer-backdrop" aria-label="Close menu" onClick={closeNav} />
+          <nav id="primary-nav-drawer" className="nav-drawer" aria-label="Mobile main">
+            <p className="nav-drawer-title">Navigate</p>
+            {navLinks}
+          </nav>
+        </>
+      )}
+    </>
   )
 }
 

@@ -1,0 +1,18 @@
+{
+  "name": "DeNote",
+  "short_name": "DeNote",
+  "description": "Decentralized academic notes on IPFS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef5f1",
+  "theme_color": "#0b6e4f",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
