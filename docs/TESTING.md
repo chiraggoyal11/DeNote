@@ -39,6 +39,12 @@ Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 - `backend-test` — `npm ci` + `npm test`
 - `frontend-build` — `frontend` install + `vite build`
 
+## CD
+
+Workflow: [`.github/workflows/cd.yml`](../.github/workflows/cd.yml) — deploys to Vercel + Render after CI succeeds on `main`.
+
+Setup (secrets): [`docs/DEPLOY.md`](./DEPLOY.md).
+
 ## Manual / offline checks
 
 Phase 9 offline IndexedDB + service worker behavior is verified manually (or with a local Puppeteer smoke). CI does not register a service worker against production gateways.

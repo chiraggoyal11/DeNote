@@ -19,4 +19,16 @@ describe('docs artifacts', () => {
         const raw = fs.readFileSync(file, 'utf8');
         assert.match(raw, /npm test/);
     });
+
+    it('ships CD workflow and deploy guide', () => {
+        const workflow = path.join(__dirname, '..', '.github', 'workflows', 'cd.yml');
+        const guide = path.join(__dirname, '..', 'docs', 'DEPLOY.md');
+        assert.ok(fs.existsSync(workflow));
+        assert.ok(fs.existsSync(guide));
+        const yml = fs.readFileSync(workflow, 'utf8');
+        assert.match(yml, /workflow_run/);
+        assert.match(yml, /VERCEL_TOKEN/);
+        assert.match(yml, /RENDER_DEPLOY_HOOK_URL/);
+        assert.match(fs.readFileSync(guide, 'utf8'), /VERCEL_ORG_ID/);
+    });
 });
