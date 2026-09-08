@@ -27,6 +27,7 @@ function clearAuthStorage() {
   localStorage.removeItem('username')
   localStorage.removeItem('displayName')
   localStorage.removeItem('userPicture')
+  localStorage.removeItem('role')
 }
 
 // Add token to requests
@@ -122,6 +123,23 @@ export const communityAPI = {
   markRead: (ids) => api.post('/notifications/read', { ids }),
   markAllRead: () => api.post('/notifications/read-all'),
   activity: (params) => api.get('/activity', { params }),
+}
+
+export const adminAPI = {
+  stats: () => api.get('/admin/stats'),
+  reports: (params) => api.get('/admin/reports', { params }),
+  resolveReport: (id, resolutionNote) => api.post(`/admin/reports/${id}/resolve`, { resolutionNote }),
+  rejectReport: (id, resolutionNote) => api.post(`/admin/reports/${id}/reject`, { resolutionNote }),
+  verifyNote: (id) => api.post(`/admin/notes/${id}/verify`),
+  unverifyNote: (id) => api.post(`/admin/notes/${id}/unverify`),
+  removeNote: (id) => api.delete(`/admin/notes/${id}`),
+  removeComment: (id) => api.delete(`/admin/comments/${id}`),
+  listUsers: (params) => api.get('/admin/users', { params }),
+  setRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
+  restrictUser: (id, reason) => api.post(`/admin/users/${id}/restrict`, { reason }),
+  unrestrictUser: (id) => api.post(`/admin/users/${id}/unrestrict`),
+  auditLogs: (params) => api.get('/admin/audit-logs', { params }),
+  createReport: (payload) => api.post('/reports', payload),
 }
 
 export { API_URL }

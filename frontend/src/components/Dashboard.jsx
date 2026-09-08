@@ -28,6 +28,9 @@ function Dashboard({ onLogout }) {
         if (response.data.user.picture) {
           localStorage.setItem('userPicture', response.data.user.picture)
         }
+        if (response.data.user.role) {
+          localStorage.setItem('role', response.data.user.role)
+        }
       }
     } catch (err) {
       console.error('Failed to fetch profile:', err)

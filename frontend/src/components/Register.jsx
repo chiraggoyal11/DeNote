@@ -32,6 +32,8 @@ function Register({ onLogin }) {
     else localStorage.removeItem('displayName')
     if (user?.picture) localStorage.setItem('userPicture', user.picture)
     else localStorage.removeItem('userPicture')
+    if (user?.role) localStorage.setItem('role', user.role)
+    else localStorage.setItem('role', 'student')
     onLogin(token)
     navigate('/dashboard', { replace: true })
   }

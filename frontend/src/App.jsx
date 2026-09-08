@@ -14,6 +14,7 @@ import Collections from './components/Collections'
 import CollectionView from './components/CollectionView'
 import PublicProfile from './components/PublicProfile'
 import Activity from './components/Activity'
+import AdminDashboard from './components/AdminDashboard'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('token'))
@@ -33,6 +34,7 @@ function App() {
     localStorage.removeItem('username')
     localStorage.removeItem('displayName')
     localStorage.removeItem('userPicture')
+    localStorage.removeItem('role')
     setIsAuthenticated(false)
   }
 
@@ -95,6 +97,10 @@ function App() {
           <Route
             path="/u/:username"
             element={isAuthenticated ? <PublicProfile onLogout={handleLogout} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/admin"
+            element={isAuthenticated ? <AdminDashboard onLogout={handleLogout} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/profile"

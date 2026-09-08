@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { communityAPI } from '../api'
+import { adminAPI, communityAPI } from '../api'
 import AppNav from './AppNav'
 import { NoteCard } from './NoteCard'
 
@@ -11,6 +11,7 @@ function PublicProfile({ onLogout }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [shareMsg, setShareMsg] = useState('')
+  const [reportMsg, setReportMsg] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -63,6 +64,26 @@ function PublicProfile({ onLogout }) {
       setShareMsg('Profile link copied')
     } catch {
       setShareMsg(url)
+    }
+  }
+
+  const handleReportUser = async () => {
+    if (!profile?._id || profile.isSelf) return
+    const reason = window.prompt('Why are you reporting this user?')
+    if (!reason || reason.trim().length < 3) return
+    setBusy(true)
+    setReportMsg('')
+    try {
+      const res = await adminAPI.createReport({
+        targetType: 'user',
+        targetId: profile._id,
+        reason: reason.trim()
+      })
+      setReportMsg(res.data.msg || 'Report submitted.')
+    } catch (err) {
+      setReportMsg(err.response?.data?.msg || 'Could not submit report')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -125,8 +146,14 @@ function PublicProfile({ onLogout }) {
             <Link to="/profile" className="btn btn-secondary btn-inline">Edit profile</Link>
           )}
           <button type="button" className="btn btn-secondary btn-inline" onClick={copyShare}>Copy profile link</button>
+          {!profile.isSelf && (
+            <button type="button" className="btn btn-secondary btn-inline" disabled={busy} onClick={handleReportUser}>
+              Report user
+            </button>
+          )}
         </div>
         {shareMsg && <p className="page-sub">{shareMsg}</p>}
+        {reportMsg && <p className="page-sub">{reportMsg}</p>}
         {error && <div className="error">{error}</div>}
       </section>
 

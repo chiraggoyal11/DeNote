@@ -15,6 +15,8 @@ function AppNav({ onLogout }) {
   const username = localStorage.getItem('username') || 'User'
   const displayName = localStorage.getItem('displayName') || username
   const picture = localStorage.getItem('userPicture') || ''
+  const role = localStorage.getItem('role') || 'student'
+  const isStaff = role === 'moderator' || role === 'admin'
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -38,6 +40,7 @@ function AppNav({ onLogout }) {
     localStorage.removeItem('username')
     localStorage.removeItem('displayName')
     localStorage.removeItem('userPicture')
+    localStorage.removeItem('role')
     if (onLogout) onLogout()
     window.location.href = '/login'
   }
@@ -56,6 +59,7 @@ function AppNav({ onLogout }) {
           <NavLink to="/collections">Collections</NavLink>
           <NavLink to="/my-uploads">My uploads</NavLink>
           <NavLink to="/favorites">Favorites</NavLink>
+          {isStaff && <NavLink to="/admin">Moderation</NavLink>}
           <NavLink to="/upload" className="nav-cta">Upload</NavLink>
         </nav>
       </div>
