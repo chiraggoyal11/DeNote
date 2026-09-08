@@ -107,5 +107,22 @@ export const collectionsAPI = {
   reorder: (id, noteIds) => api.put(`/collections/${id}/reorder`, { noteIds }),
 }
 
+export const communityAPI = {
+  getProfile: (username) => api.get(`/users/${encodeURIComponent(username)}`),
+  followers: (username) => api.get(`/users/${encodeURIComponent(username)}/followers`),
+  following: (username) => api.get(`/users/${encodeURIComponent(username)}/following`),
+  follow: (username) => api.post(`/users/${encodeURIComponent(username)}/follow`),
+  unfollow: (username) => api.delete(`/users/${encodeURIComponent(username)}/follow`),
+  listComments: (noteId, params) => api.get(`/notes/${noteId}/comments`, { params }),
+  addComment: (noteId, payload) => api.post(`/notes/${noteId}/comments`, payload),
+  editComment: (id, body) => api.put(`/comments/${id}`, { body }),
+  deleteComment: (id) => api.delete(`/comments/${id}`),
+  notifications: (params) => api.get('/notifications', { params }),
+  unreadCount: () => api.get('/notifications/unread-count'),
+  markRead: (ids) => api.post('/notifications/read', { ids }),
+  markAllRead: () => api.post('/notifications/read-all'),
+  activity: (params) => api.get('/activity', { params }),
+}
+
 export { API_URL }
 export default api

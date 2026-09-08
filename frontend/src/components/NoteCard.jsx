@@ -25,7 +25,20 @@ export function NoteCard({
         <p><strong>Subject:</strong> {note.subject || 'N/A'}</p>
         <p><strong>Branch:</strong> {note.branch || 'N/A'}</p>
         <p><strong>Semester:</strong> {note.sem || 'N/A'}</p>
-        <p><strong>Uploader:</strong> @{note.uploader || 'anon'}</p>
+        <p>
+          <strong>Uploader:</strong>{' '}
+          {note.uploader ? (
+            <Link
+              to={`/u/${note.uploader}`}
+              className="link"
+              onClick={(e) => e.stopPropagation()}
+            >
+              @{note.uploader}
+            </Link>
+          ) : (
+            '@anon'
+          )}
+        </p>
         <p className="note-card-stats">
           Quality {note.qualityScore ?? 0}/100 · {note.viewCount || 0} views · {note.likeCount || 0} upvotes
         </p>
