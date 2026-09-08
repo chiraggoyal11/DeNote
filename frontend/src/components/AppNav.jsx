@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
+import NotificationsBell from './NotificationsBell'
 
 function initialsFrom(name) {
   if (!name) return '?'
@@ -51,6 +52,7 @@ function AppNav({ onLogout }) {
         <nav className="topbar-nav" aria-label="Main">
           <NavLink to="/dashboard">Home</NavLink>
           <NavLink to="/notes">Browse</NavLink>
+          <NavLink to="/activity">Following</NavLink>
           <NavLink to="/collections">Collections</NavLink>
           <NavLink to="/my-uploads">My uploads</NavLink>
           <NavLink to="/favorites">Favorites</NavLink>
@@ -59,6 +61,7 @@ function AppNav({ onLogout }) {
       </div>
 
       <div className="topbar-right">
+        <NotificationsBell />
         <div className="profile-menu" ref={menuRef}>
           <button
             type="button"
@@ -82,6 +85,14 @@ function AppNav({ onLogout }) {
                 <span className="profile-dropdown-name">{displayName}</span>
                 <span className="profile-dropdown-hint">@{username}</span>
               </div>
+              <Link
+                to={`/u/${username}`}
+                role="menuitem"
+                className="profile-dropdown-item"
+                onClick={() => setOpen(false)}
+              >
+                Public profile
+              </Link>
               <Link
                 to="/my-uploads"
                 role="menuitem"

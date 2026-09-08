@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { collectionsAPI, notesAPI } from '../api'
 import AppNav from './AppNav'
+import CommentSection from './CommentSection'
 
 const IPFS_GATEWAY = (import.meta.env.VITE_IPFS_GATEWAY || 'https://gateway.pinata.cloud/ipfs/').replace(/\/?$/, '/')
 
@@ -15,6 +16,7 @@ function NoteView({ onLogout }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [collectionMsg, setCollectionMsg] = useState('')
+  const [shareMsg, setShareMsg] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -154,7 +156,14 @@ function NoteView({ onLogout }) {
           <p><strong>Branch:</strong> {note?.branch || 'N/A'}</p>
           <p><strong>Semester:</strong> {note?.sem || 'N/A'}</p>
           {note?.college ? <p><strong>College:</strong> {note.college}</p> : null}
-          <p><strong>Uploader:</strong> @{note?.uploader || 'Anonymous'}</p>
+          <p>
+            <strong>Uploader:</strong>{' '}
+            {note?.uploader ? (
+              <Link to={`/u/${note.uploader}`} className="link">@{note.uploader}</Link>
+            ) : (
+              '@Anonymous'
+            )}
+          </p>
           <p><strong>Quality:</strong> {note?.qualityScore ?? 0}/100</p>
           <p><strong>Views:</strong> {note?.viewCount || 0}</p>
           <p><strong>Version:</strong> v{note?.version || 1}{note?.isLatest ? ' (latest)' : ''}</p>
@@ -211,6 +220,21 @@ function NoteView({ onLogout }) {
           <a className="btn btn-inline btn-secondary" href={openUrl} target="_blank" rel="noopener noreferrer">
             Open on IPFS
           </a>
+          <button
+            type="button"
+            className="btn btn-secondary btn-inline"
+            onClick={async () => {
+              const url = `${window.location.origin}/note/${cid}`
+              try {
+                await navigator.clipboard.writeText(url)
+                setShareMsg('Note link copied')
+              } catch {
+                setShareMsg(url)
+              }
+            }}
+          >
+            Copy link
+          </button>
           {note?.isOwner && (
             <Link className="btn btn-inline" to={`/upload?versionOf=${note._id}`}>
               Upload new version
@@ -242,7 +266,10 @@ function NoteView({ onLogout }) {
           )}
         </div>
         {collectionMsg && <p className="page-sub">{collectionMsg}</p>}
+        {shareMsg && <p className="page-sub">{shareMsg}</p>}
       </section>
+
+      {note?._id && <CommentSection noteId={note._id} />}
 
       {versions.length > 1 && (
         <section className="panel" style={{ marginTop: '1rem' }}>

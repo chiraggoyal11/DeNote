@@ -36,6 +36,7 @@ const {
 } = require('../utils/resourceTypes');
 const { authLimiter, otpLimiter, uploadLimiter } = require('../middleware/rateLimit');
 const crypto = require('crypto');
+const { createNotification } = require('../utils/notifications');
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
@@ -1357,6 +1358,19 @@ router.post('/ifps/:id/like', user_jwt, async (req, res) => {
         }
         note.likeCount = note.likes.length;
         await note.save();
+
+        if (liked && note.uploaderId) {
+            const actor = await User.findById(userId).select('username');
+            await createNotification({
+                userId: note.uploaderId,
+                type: 'like',
+                actorId: userId,
+                actorUsername: actor?.username || '',
+                noteId: note._id,
+                noteCid: note.cid,
+                message: `@${actor?.username || 'someone'} upvoted “${note.title}”`
+            });
+        }
 
         const ctx = await attachViewerContext(req);
         res.status(200).json({
