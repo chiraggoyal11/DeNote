@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { normalizeRole, maybeBootstrapAdmin } = require('./roles');
 
 function signUserToken(user) {
     return new Promise((resolve, reject) => {
@@ -16,6 +17,7 @@ function signUserToken(user) {
 
 function publicUser(user) {
     const fav = Array.isArray(user.fav) ? user.fav : [];
+    maybeBootstrapAdmin(user);
     return {
         _id: user.id || user._id,
         username: user.username,
@@ -28,6 +30,8 @@ function publicUser(user) {
         branch: user.branch || null,
         semester: user.semester || null,
         authProvider: user.authProvider || 'local',
+        role: normalizeRole(user.role),
+        restricted: Boolean(user.restricted),
         hasPassword: Boolean(user.password),
         deletionScheduledAt: user.deletionScheduledAt || null,
         favoriteCount: fav.length,

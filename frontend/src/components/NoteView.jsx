@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { collectionsAPI, notesAPI } from '../api'
+import { adminAPI, collectionsAPI, notesAPI } from '../api'
 import AppNav from './AppNav'
 import CommentSection from './CommentSection'
 
@@ -17,7 +17,10 @@ function NoteView({ onLogout }) {
   const [busy, setBusy] = useState(false)
   const [collectionMsg, setCollectionMsg] = useState('')
   const [shareMsg, setShareMsg] = useState('')
+  const [modMsg, setModMsg] = useState('')
   const navigate = useNavigate()
+  const role = localStorage.getItem('role') || 'student'
+  const isStaff = role === 'moderator' || role === 'admin'
 
   useEffect(() => {
     fetchNote()
@@ -95,6 +98,55 @@ function NoteView({ onLogout }) {
     } catch (err) {
       alert('Failed to delete note: ' + (err.response?.data?.msg || err.message))
       console.error(err)
+    }
+  }
+
+  const handleReport = async () => {
+    if (!note?._id) return
+    const reason = window.prompt('Why are you reporting this note? (spam, wrong content, etc.)')
+    if (!reason || reason.trim().length < 3) return
+    setBusy(true)
+    setModMsg('')
+    try {
+      const res = await adminAPI.createReport({
+        targetType: 'note',
+        targetId: note._id,
+        reason: reason.trim()
+      })
+      setModMsg(res.data.msg || 'Report submitted.')
+    } catch (err) {
+      setModMsg(err.response?.data?.msg || 'Could not submit report')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleStaffVerify = async (unverify = false) => {
+    if (!note?._id || !isStaff) return
+    setBusy(true)
+    setModMsg('')
+    try {
+      if (unverify) await adminAPI.unverifyNote(note._id)
+      else await adminAPI.verifyNote(note._id)
+      setNote((n) => ({ ...n, isVerified: !unverify }))
+      setModMsg(unverify ? 'Verification removed.' : 'Note verified.')
+    } catch (err) {
+      setModMsg(err.response?.data?.msg || 'Verify action failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleStaffRemove = async () => {
+    if (!note?._id || !isStaff) return
+    if (!window.confirm('Remove this note as moderator?')) return
+    setBusy(true)
+    try {
+      await adminAPI.removeNote(note._id)
+      navigate('/notes')
+    } catch (err) {
+      setModMsg(err.response?.data?.msg || 'Remove failed')
+      setBusy(false)
     }
   }
 
@@ -245,7 +297,29 @@ function NoteView({ onLogout }) {
               Delete note
             </button>
           )}
+          {!note?.isOwner && (
+            <button type="button" className="btn btn-secondary btn-inline" disabled={busy} onClick={handleReport}>
+              Report
+            </button>
+          )}
+          {isStaff && (
+            <>
+              {!note?.isVerified ? (
+                <button type="button" className="btn btn-inline" disabled={busy} onClick={() => handleStaffVerify(false)}>
+                  Verify
+                </button>
+              ) : (
+                <button type="button" className="btn btn-secondary btn-inline" disabled={busy} onClick={() => handleStaffVerify(true)}>
+                  Unverify
+                </button>
+              )}
+              <button type="button" className="btn btn-danger btn-inline" disabled={busy} onClick={handleStaffRemove}>
+                Staff remove
+              </button>
+            </>
+          )}
         </div>
+        {modMsg && <p className="page-sub" style={{ marginTop: '0.65rem' }}>{modMsg}</p>}
 
         <div className="collection-add-row">
           <select

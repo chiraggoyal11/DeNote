@@ -22,6 +22,7 @@ function cacheUserLocal(user) {
   else localStorage.removeItem('displayName')
   if (user.picture) localStorage.setItem('userPicture', user.picture)
   else localStorage.removeItem('userPicture')
+  if (user.role) localStorage.setItem('role', user.role)
 }
 
 function formFromUser(user) {

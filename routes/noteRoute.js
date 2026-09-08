@@ -37,6 +37,7 @@ const {
 const { authLimiter, otpLimiter, uploadLimiter } = require('../middleware/rateLimit');
 const crypto = require('crypto');
 const { createNotification } = require('../utils/notifications');
+const { maybeBootstrapAdmin } = require('../utils/roles');
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
@@ -391,6 +392,8 @@ router.post('/register', authLimiter, async (req,res,next) => {
         user.email = normalizedEmail;
         if (normalizedPhone) user.phone = normalizedPhone;
         user.authProvider = 'local';
+        user.role = 'student';
+        maybeBootstrapAdmin(user);
 
         const salt = await bcryptjs.genSalt(10);
         user.password=await bcryptjs.hash(password,salt);
@@ -454,6 +457,18 @@ router.post('/login' , authLimiter, async (req,res,next)=> {
                 msg: "Invalid password"
             });
         }
+
+        if (user.restricted) {
+            return res.status(403).json({
+                success: false,
+                msg: user.restrictionReason || 'Your account is restricted. Contact an admin.',
+                code: 'ACCOUNT_RESTRICTED'
+            });
+        }
+
+        const beforeRole = user.role;
+        maybeBootstrapAdmin(user);
+        if (user.role !== beforeRole) await user.save();
 
         const token = await signUserToken(user);
         res.status(200).json({
@@ -687,8 +702,10 @@ router.post('/auth/google', authLimiter, async (req, res) => {
                 googleId,
                 authProvider: 'google',
                 displayName,
-                picture: picture || undefined
+                picture: picture || undefined,
+                role: 'student'
             });
+            maybeBootstrapAdmin(user);
             await user.save();
         } else {
             if (!user.googleId) user.googleId = googleId;
@@ -696,6 +713,16 @@ router.post('/auth/google', authLimiter, async (req, res) => {
             if (displayName) user.displayName = displayName;
             if (picture) user.picture = picture;
             if (!user.authProvider) user.authProvider = 'google';
+
+            if (user.restricted) {
+                return res.status(403).json({
+                    success: false,
+                    msg: user.restrictionReason || 'Your account is restricted. Contact an admin.',
+                    code: 'ACCOUNT_RESTRICTED'
+                });
+            }
+
+            maybeBootstrapAdmin(user);
             await user.save();
         }
 
@@ -888,6 +915,13 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
         const owner = await User.findById(req.user.id);
         if (!owner) {
             return res.status(401).json({ success: false, msg: 'Auth. denied' });
+        }
+        if (owner.restricted) {
+            return res.status(403).json({
+                success: false,
+                msg: owner.restrictionReason || 'Your account is restricted.',
+                code: 'ACCOUNT_RESTRICTED'
+            });
         }
         if (await purgeIfDue(owner)) {
             return res.status(401).json({

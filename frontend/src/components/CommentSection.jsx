@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { communityAPI } from '../api'
+import { adminAPI, communityAPI } from '../api'
 
-function CommentItem({ comment, onReply, onDelete, depth = 0 }) {
+function CommentItem({ comment, onReply, onDelete, onReport, canModerate, depth = 0 }) {
   return (
     <li className={`comment-item depth-${Math.min(depth, 3)}`}>
       <div className="comment-head">
@@ -15,15 +15,26 @@ function CommentItem({ comment, onReply, onDelete, depth = 0 }) {
           {depth < 2 && (
             <button type="button" className="link-btn" onClick={() => onReply(comment)}>Reply</button>
           )}
-          {comment.isOwner && (
+          {(comment.isOwner || canModerate) && (
             <button type="button" className="link-btn danger" onClick={() => onDelete(comment)}>Delete</button>
+          )}
+          {!comment.isOwner && (
+            <button type="button" className="link-btn" onClick={() => onReport(comment)}>Report</button>
           )}
         </div>
       )}
       {Array.isArray(comment.replies) && comment.replies.length > 0 && (
         <ul className="comment-replies">
           {comment.replies.map((r) => (
-            <CommentItem key={r._id} comment={r} onReply={onReply} onDelete={onDelete} depth={depth + 1} />
+            <CommentItem
+              key={r._id}
+              comment={r}
+              onReply={onReply}
+              onDelete={onDelete}
+              onReport={onReport}
+              canModerate={canModerate}
+              depth={depth + 1}
+            />
           ))}
         </ul>
       )}
@@ -38,6 +49,8 @@ function CommentSection({ noteId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const role = localStorage.getItem('role') || 'student'
+  const canModerate = role === 'moderator' || role === 'admin'
 
   const load = async () => {
     if (!noteId) return
@@ -87,6 +100,22 @@ function CommentSection({ noteId }) {
     }
   }
 
+  const handleReport = async (comment) => {
+    const reason = window.prompt('Why are you reporting this comment?')
+    if (!reason || reason.trim().length < 3) return
+    try {
+      const res = await adminAPI.createReport({
+        targetType: 'comment',
+        targetId: comment._id,
+        reason: reason.trim()
+      })
+      setError('')
+      window.alert(res.data.msg || 'Report submitted.')
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Could not submit report')
+    }
+  }
+
   return (
     <section className="panel comments-panel">
       <h2 className="home-section-title" style={{ marginTop: 0 }}>Comments</h2>
@@ -122,6 +151,8 @@ function CommentSection({ noteId }) {
               comment={c}
               onReply={setReplyTo}
               onDelete={handleDelete}
+              onReport={handleReport}
+              canModerate={canModerate}
             />
           ))}
         </ul>

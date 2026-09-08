@@ -13,6 +13,7 @@ const { serializeNote, loadFavoriteSets } = require('../utils/notesHelpers');
 const { createNotification, serializeNotification } = require('../utils/notifications');
 const { computeBadges } = require('../utils/badges');
 const { purgeIfDue } = require('../utils/accountDeletion');
+const { isStaff } = require('../utils/roles');
 
 async function loadUser(req) {
     if (!req.user?.id) return null;
@@ -374,7 +375,7 @@ router.delete('/comments/:id', user_jwt, async (req, res) => {
         const note = await Note.findById(comment.noteId);
         const isAuthor = String(comment.authorId) === String(me._id);
         const isNoteOwner = note && note.uploaderId && String(note.uploaderId) === String(me._id);
-        if (!isAuthor && !isNoteOwner) {
+        if (!isAuthor && !isNoteOwner && !isStaff(me.role)) {
             return res.status(403).json({ success: false, msg: 'Not allowed to delete this comment.' });
         }
 
