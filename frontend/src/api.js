@@ -22,6 +22,13 @@ const api = axios.create({
   baseURL: API_URL,
 })
 
+function clearAuthStorage() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('username')
+  localStorage.removeItem('displayName')
+  localStorage.removeItem('userPicture')
+}
+
 // Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
@@ -30,6 +37,34 @@ api.interceptors.request.use((config) => {
   }
   return config
 })
+
+// Expired / invalid sessions should bounce to login instead of a bare "Error" banner.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status
+    const code = error.response?.data?.code
+    const msg = error.response?.data?.msg
+    const isAuthFailure =
+      status === 401 &&
+      (code === 'TOKEN_EXPIRED' ||
+        code === 'INVALID_TOKEN' ||
+        code === 'NO_TOKEN' ||
+        msg === 'Error' ||
+        /sign in|session|auth/i.test(String(msg || '')))
+
+    if (isAuthFailure && typeof window !== 'undefined') {
+      const path = window.location.pathname || ''
+      const onAuthPage = path === '/login' || path === '/register' || path === '/forgot-password'
+      clearAuthStorage()
+      if (!onAuthPage) {
+        const reason = code === 'TOKEN_EXPIRED' ? 'expired' : 'auth'
+        window.location.assign(`/login?reason=${reason}`)
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 export const authAPI = {
   register: (userData) => api.post('/register', userData),
