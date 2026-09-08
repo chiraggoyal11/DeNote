@@ -1,15 +1,24 @@
 const bcryptjs = require('bcryptjs');
+const crypto = require('crypto');
 
-// Temporary hardcoded OTP until SendGrid/Twilio are wired up.
-// Set OTP_HARDCODED=false later and restore random generation + real delivery.
 const HARDCODED_OTP = '123456';
-const useHardcodedOtp = process.env.OTP_HARDCODED !== 'false';
+
+/**
+ * Hardcoded OTP is opt-in for local/dev only.
+ * - Requires OTP_HARDCODED=true
+ * - Always disabled when NODE_ENV=production
+ */
+function isHardcodedOtpEnabled() {
+    if (process.env.NODE_ENV === 'production') return false;
+    return process.env.OTP_HARDCODED === 'true';
+}
+
+const useHardcodedOtp = isHardcodedOtpEnabled();
 
 function generateOtp() {
     if (useHardcodedOtp) {
         return HARDCODED_OTP;
     }
-    const crypto = require('crypto');
     return String(crypto.randomInt(100000, 999999));
 }
 
@@ -29,6 +38,7 @@ async function verifyOtp(otp, otpHash) {
 module.exports = {
     HARDCODED_OTP,
     useHardcodedOtp,
+    isHardcodedOtpEnabled,
     generateOtp,
     hashOtp,
     verifyOtp

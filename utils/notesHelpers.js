@@ -29,6 +29,7 @@ function serializeNote(note, { userId = null, username = null, favoriteCids = nu
         subject: doc.subject,
         branch: doc.branch,
         sem: doc.sem,
+        description: doc.description || '',
         uploader: doc.uploader,
         uploaderId: doc.uploaderId || null,
         cid: doc.cid,
@@ -96,7 +97,8 @@ function buildNotesQuery(query) {
             { subject: rx },
             { uploader: rx },
             { branch: rx },
-            { sem: rx }
+            { sem: rx },
+            { description: rx }
         ];
         if (filter.$or) {
             filter.$and = [{ $or: filter.$or }, { $or: textOr }];

@@ -27,9 +27,25 @@ const {
     collegeEmailRequiredMsg,
     collegeEmailDeniedMsg
 } = require('../utils/collegeEmail');
+const { authLimiter, otpLimiter, uploadLimiter } = require('../middleware/rateLimit');
 
-const memory=multer.memoryStorage();
-const upload=multer({memory: memory});
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
+
+const memory = multer.memoryStorage();
+const upload = multer({
+    storage: memory,
+    limits: { fileSize: MAX_UPLOAD_BYTES },
+    fileFilter: (req, file, cb) => {
+        const name = (file.originalname || '').toLowerCase();
+        const isPdf =
+            file.mimetype === 'application/pdf' ||
+            name.endsWith('.pdf');
+        if (!isPdf) {
+            return cb(new Error('Only PDF files are allowed'));
+        }
+        return cb(null, true);
+    }
+});
 const googleClient = process.env.GOOGLE_CLIENT_ID
     ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
     : null;
@@ -297,7 +313,7 @@ router.put('/account/profile', user_jwt, async (req, res) => {
     }
 });
 
-router.post('/register', async (req,res,next) => {
+router.post('/register', authLimiter, async (req,res,next) => {
     const { username , password, email, phone }=req.body;
 
     try{
@@ -305,6 +321,13 @@ router.post('/register', async (req,res,next) => {
             return res.status(400).json({
                 success: false,
                 msg: "Username and password are required."
+            });
+        }
+
+        if (String(password).length < 6) {
+            return res.status(400).json({
+                success: false,
+                msg: "Password must be at least 6 characters."
             });
         }
 
@@ -381,7 +404,7 @@ router.post('/register', async (req,res,next) => {
     
 });
 
-router.post('/login' , async (req,res,next)=> {
+router.post('/login' , authLimiter, async (req,res,next)=> {
     const {username , password}=req.body;
 
     try{
@@ -438,7 +461,7 @@ router.post('/login' , async (req,res,next)=> {
     }
 });
 
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', otpLimiter, async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
         const phone = normalizePhone(req.body.phone);
@@ -486,14 +509,13 @@ router.post('/forgot-password', async (req, res) => {
         user.otpPurpose = 'reset_password';
         await user.save();
 
-        // Hardcoded OTP mode: skip SendGrid/Twilio until they are configured later.
+        // Hardcoded OTP is local/dev only — never echo OTP in API responses.
         if (useHardcodedOtp) {
             console.log(`[OTP] Hardcoded mode — use OTP ${HARDCODED_OTP} for ${email || phone}`);
             return res.status(200).json({
                 success: true,
-                msg: `Account verified. Use OTP ${HARDCODED_OTP} to reset your password.`,
-                channel: 'hardcoded',
-                otp: HARDCODED_OTP
+                msg: 'Account verified. Check the server console for the development OTP.',
+                channel: 'hardcoded'
             });
         }
 
@@ -519,7 +541,7 @@ router.post('/forgot-password', async (req, res) => {
     }
 });
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', otpLimiter, async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
         const phone = normalizePhone(req.body.phone);
@@ -594,7 +616,7 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
-router.post('/auth/google', async (req, res) => {
+router.post('/auth/google', authLimiter, async (req, res) => {
     try {
         const { credential } = req.body;
 
@@ -846,7 +868,7 @@ function sortSpec(sort) {
     return { uploadedAt: -1 };
 }
 
-router.post('/ifps/upload', user_jwt, upload.single('File_Note'), async (req, res) => {
+router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'), async (req, res) => {
     try {
         const owner = await User.findById(req.user.id);
         if (!owner) {
@@ -864,6 +886,9 @@ router.post('/ifps/upload', user_jwt, upload.single('File_Note'), async (req, re
         const subject = req.body.subject;
         const branch = req.body.branch;
         const sem = req.body.sem;
+        const description = req.body.description
+            ? String(req.body.description).trim().slice(0, 500)
+            : '';
 
         if (!title || !subject || !branch || !sem) {
             return res.status(400).json({
@@ -893,6 +918,7 @@ router.post('/ifps/upload', user_jwt, upload.single('File_Note'), async (req, re
             subject,
             branch,
             sem,
+            description,
             uploader: owner.username,
             uploaderId: owner._id,
             cid: response.data.IpfsHash,
@@ -1201,7 +1227,7 @@ router.post('/ifps/:id/like', user_jwt, async (req, res) => {
     }
 });
 
-router.put('/ifps/update/:id', user_jwt, upload.single('File_Note'), async (req, res) => {
+router.put('/ifps/update/:id', user_jwt, uploadLimiter, upload.single('File_Note'), async (req, res) => {
     try {
         const owner = await User.findById(req.user.id);
         if (!owner) return res.status(401).json({ success: false, msg: 'Auth. denied' });
@@ -1250,6 +1276,9 @@ router.put('/ifps/update/:id', user_jwt, upload.single('File_Note'), async (req,
         note.subject = req.body.subject || note.subject;
         note.branch = req.body.branch || note.branch;
         note.sem = req.body.sem || note.sem;
+        if (typeof req.body.description === 'string') {
+            note.description = req.body.description.trim().slice(0, 500);
+        }
         note.uploader = owner.username;
 
         await note.save();

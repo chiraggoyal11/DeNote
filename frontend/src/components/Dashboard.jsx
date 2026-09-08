@@ -126,10 +126,10 @@ function Dashboard({ onLogout }) {
           </li>
           <li>
             <strong>Preview notes</strong>
-            <span>Open a note page with details, rating, and an in-app preview.</span>
+            <span>Open a note page with details, upvotes, and an in-app preview.</span>
           </li>
           <li>
-            <strong>Rate quality</strong>
+            <strong>Upvote quality</strong>
             <span>Help classmates spot the most useful material.</span>
           </li>
           <li>

@@ -125,6 +125,10 @@ function NoteView({ onLogout }) {
           <p><strong>CID:</strong> <code>{cid}</code></p>
         </div>
 
+        {note?.description ? (
+          <p className="note-description" style={{ marginTop: '1rem' }}>{note.description}</p>
+        ) : null}
+
         <div className="action-row note-view-actions" style={{ marginTop: '1.25rem', alignItems: 'center' }}>
           <button
             type="button"
