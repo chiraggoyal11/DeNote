@@ -6,6 +6,7 @@ DeNote Phase 10 adds a free-tier friendly quality baseline: unit tests, HTTP smo
 
 ```bash
 # Backend unit + HTTP smoke (no Mongo required)
+# Uses `node --test tests/*.test.js` (single-level glob — works in GitHub Actions)
 npm test
 
 # Frontend production build
