@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f766e" />
+    <title>DeNote — Offline</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #ecf4f2;
+        --ink: #14332e;
+        --muted: #4b6b64;
+        --accent: #0f766e;
+        --line: #c5ddd7;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 1.5rem;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(900px 420px at 10% -10%, #d7efe9 0%, transparent 55%),
+          radial-gradient(700px 380px at 100% 0%, #cfe3ff 0%, transparent 50%),
+          var(--bg);
+      }
+      main {
+        width: min(28rem, 100%);
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.75rem;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0 0 1.25rem;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      a {
+        display: inline-block;
+        padding: 0.7rem 1.1rem;
+        border-radius: 12px;
+        background: var(--accent);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>DeNote is offline</h1>
+      <p>
+        The app shell could not be loaded from the network. Cached pages and
+        previously viewed notes may still work when you reopen DeNote.
+      </p>
+      <a href="/">Try again</a>
+    </main>
+  </body>
+</html>

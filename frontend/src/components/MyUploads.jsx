@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { notesAPI } from '../api'
 import AppNav from './AppNav'
+import OfflineBanner from './OfflineBanner'
 import { EmptyNotes, NoteCard, Pagination } from './NoteCard'
+import { NotesGridSkeleton } from './Skeleton'
+import { cacheKeyMine, withOfflineCache } from '../utils/offlineCache'
 
 function MyUploads({ onLogout }) {
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [fromCache, setFromCache] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -15,14 +19,19 @@ function MyUploads({ onLogout }) {
   const fetchMine = useCallback(async (pageArg = 1, query = q) => {
     setLoading(true)
     setError('')
+    setFromCache(false)
     try {
       const params = { page: pageArg, limit: 12 }
       if (query.trim()) params.q = query.trim()
-      const response = await notesAPI.myNotes(params)
-      setNotes(response.data.notes || [])
-      setPage(response.data.page || pageArg)
-      setTotalPages(response.data.totalPages || 1)
-      setTotal(response.data.total || 0)
+      const { data, fromCache: cached } = await withOfflineCache(
+        cacheKeyMine(params),
+        () => notesAPI.myNotes(params)
+      )
+      setNotes(data.notes || [])
+      setPage(data.page || pageArg)
+      setTotalPages(data.totalPages || 1)
+      setTotal(data.total || 0)
+      setFromCache(Boolean(cached))
     } catch (err) {
       setError(err.response?.data?.msg || 'Failed to load your uploads')
     } finally {
@@ -53,6 +62,7 @@ function MyUploads({ onLogout }) {
   return (
     <div className="container page-enter">
       <AppNav onLogout={onLogout} />
+      <OfflineBanner fromCache={fromCache} scope="stale" />
 
       <section className="page-head">
         <div>
@@ -79,8 +89,8 @@ function MyUploads({ onLogout }) {
         <button type="submit" className="btn btn-inline">Search</button>
       </form>
 
-      {loading && <p className="loading">Loading your notes…</p>}
-      {error && <div className="error">{error}</div>}
+      {loading && <NotesGridSkeleton count={4} />}
+      {error && <div className="error" role="alert">{error}</div>}
 
       {!loading && notes.length === 0 && (
         <EmptyNotes title="You haven’t uploaded any notes yet." actionTo="/upload" actionLabel="Upload a note" />

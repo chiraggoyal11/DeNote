@@ -27,6 +27,7 @@ function clearAuthStorage() {
   localStorage.removeItem('username')
   localStorage.removeItem('displayName')
   localStorage.removeItem('userPicture')
+  localStorage.removeItem('role')
 }
 
 // Add token to requests
@@ -91,6 +92,86 @@ export const notesAPI = {
   updateNote: (id, data) => api.put(`/ifps/update/${id}`, data),
   deleteNote: (ids) => api.delete('/ifps/delete', { data: { id: ids } }),
   previewUrl: (cid) => `${API_URL}/ifps/preview/${cid}`,
+  resourceTypes: () => api.get('/meta/resource-types'),
+  versions: (id) => api.get(`/ifps/${id}/versions`),
+  recordShare: (noteId) => api.post(`/ifps/${noteId}/share`),
+  analytics: () => api.get('/me/analytics'),
+}
+
+export const collectionsAPI = {
+  list: (params) => api.get('/collections', { params }),
+  create: (payload) => api.post('/collections', payload),
+  get: (id) => api.get(`/collections/${id}`),
+  getShared: (shareId) => api.get(`/collections/share/${shareId}`),
+  update: (id, payload) => api.put(`/collections/${id}`, payload),
+  remove: (id) => api.delete(`/collections/${id}`),
+  addNote: (id, noteId) => api.post(`/collections/${id}/notes`, { noteId }),
+  removeNote: (id, noteId) => api.delete(`/collections/${id}/notes/${noteId}`),
+  reorder: (id, noteIds) => api.put(`/collections/${id}/reorder`, { noteIds }),
+}
+
+export const communityAPI = {
+  getProfile: (username) => api.get(`/users/${encodeURIComponent(username)}`),
+  followers: (username) => api.get(`/users/${encodeURIComponent(username)}/followers`),
+  following: (username) => api.get(`/users/${encodeURIComponent(username)}/following`),
+  follow: (username) => api.post(`/users/${encodeURIComponent(username)}/follow`),
+  unfollow: (username) => api.delete(`/users/${encodeURIComponent(username)}/follow`),
+  listComments: (noteId, params) => api.get(`/notes/${noteId}/comments`, { params }),
+  addComment: (noteId, payload) => api.post(`/notes/${noteId}/comments`, payload),
+  editComment: (id, body) => api.put(`/comments/${id}`, { body }),
+  deleteComment: (id) => api.delete(`/comments/${id}`),
+  notifications: (params) => api.get('/notifications', { params }),
+  unreadCount: () => api.get('/notifications/unread-count'),
+  markRead: (ids) => api.post('/notifications/read', { ids }),
+  markAllRead: () => api.post('/notifications/read-all'),
+  activity: (params) => api.get('/activity', { params }),
+}
+
+export const studyAPI = {
+  decks: () => api.get('/study/decks'),
+  createDeck: (payload) => api.post('/study/decks', payload),
+  getDeck: (id) => api.get(`/study/decks/${id}`),
+  updateDeck: (id, payload) => api.put(`/study/decks/${id}`, payload),
+  deleteDeck: (id) => api.delete(`/study/decks/${id}`),
+  addCard: (deckId, payload) => api.post(`/study/decks/${deckId}/cards`, payload),
+  updateCard: (id, payload) => api.put(`/study/cards/${id}`, payload),
+  deleteCard: (id) => api.delete(`/study/cards/${id}`),
+  review: (params) => api.get('/study/review', { params }),
+  reviewCard: (id, quality) => api.post(`/study/cards/${id}/review`, { quality }),
+  startQuiz: (deckId, params) => api.get(`/study/quizzes/${deckId}/start`, { params }),
+  submitQuiz: (deckId, answers) => api.post(`/study/quizzes/${deckId}/submit`, { answers }),
+  plan: () => api.get('/study/plan'),
+  createPlan: (payload) => api.post('/study/plan', payload),
+  updatePlan: (id, payload) => api.put(`/study/plan/${id}`, payload),
+  deletePlan: (id) => api.delete(`/study/plan/${id}`),
+  progress: () => api.get('/study/progress'),
+}
+
+export const aiAPI = {
+  status: () => api.get('/ai/status'),
+  summarize: (noteId) => api.post('/ai/summarize', { noteId }),
+  assist: (noteId, question) => api.post('/ai/assist', { noteId, question }),
+  search: (query, limit) => api.post('/ai/search', { query, limit }),
+  generateQuiz: (noteId, count) => api.post('/ai/generate-quiz', { noteId, count }),
+  generateFlashcards: (noteId, payload = {}) => api.post('/ai/generate-flashcards', { noteId, ...payload }),
+  recommendations: (params) => api.get('/ai/recommendations', { params }),
+}
+
+export const adminAPI = {
+  stats: () => api.get('/admin/stats'),
+  reports: (params) => api.get('/admin/reports', { params }),
+  resolveReport: (id, resolutionNote) => api.post(`/admin/reports/${id}/resolve`, { resolutionNote }),
+  rejectReport: (id, resolutionNote) => api.post(`/admin/reports/${id}/reject`, { resolutionNote }),
+  verifyNote: (id) => api.post(`/admin/notes/${id}/verify`),
+  unverifyNote: (id) => api.post(`/admin/notes/${id}/unverify`),
+  removeNote: (id) => api.delete(`/admin/notes/${id}`),
+  removeComment: (id) => api.delete(`/admin/comments/${id}`),
+  listUsers: (params) => api.get('/admin/users', { params }),
+  setRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
+  restrictUser: (id, reason) => api.post(`/admin/users/${id}/restrict`, { reason }),
+  unrestrictUser: (id) => api.post(`/admin/users/${id}/unrestrict`),
+  auditLogs: (params) => api.get('/admin/audit-logs', { params }),
+  createReport: (payload) => api.post('/reports', payload),
 }
 
 export { API_URL }

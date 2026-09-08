@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const User = require('../models/user');
 const Note = require('../models/note');
 const bcryptjs= require('bcryptjs');
@@ -20,14 +21,23 @@ const {
     isNoteOwner,
     serializeNote,
     loadFavoriteSets,
-    buildNotesQuery
+    buildNotesQuery,
+    sortSpec
 } = require('../utils/notesHelpers');
 const {
     isAllowedCollegeEmail,
     collegeEmailRequiredMsg,
     collegeEmailDeniedMsg
 } = require('../utils/collegeEmail');
+const {
+    RESOURCE_TYPES,
+    normalizeResourceType,
+    parseTags
+} = require('../utils/resourceTypes');
 const { authLimiter, otpLimiter, uploadLimiter } = require('../middleware/rateLimit');
+const crypto = require('crypto');
+const { createNotification } = require('../utils/notifications');
+const { maybeBootstrapAdmin } = require('../utils/roles');
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
@@ -382,6 +392,8 @@ router.post('/register', authLimiter, async (req,res,next) => {
         user.email = normalizedEmail;
         if (normalizedPhone) user.phone = normalizedPhone;
         user.authProvider = 'local';
+        user.role = 'student';
+        maybeBootstrapAdmin(user);
 
         const salt = await bcryptjs.genSalt(10);
         user.password=await bcryptjs.hash(password,salt);
@@ -445,6 +457,18 @@ router.post('/login' , authLimiter, async (req,res,next)=> {
                 msg: "Invalid password"
             });
         }
+
+        if (user.restricted) {
+            return res.status(403).json({
+                success: false,
+                msg: user.restrictionReason || 'Your account is restricted. Contact an admin.',
+                code: 'ACCOUNT_RESTRICTED'
+            });
+        }
+
+        const beforeRole = user.role;
+        maybeBootstrapAdmin(user);
+        if (user.role !== beforeRole) await user.save();
 
         const token = await signUserToken(user);
         res.status(200).json({
@@ -678,8 +702,10 @@ router.post('/auth/google', authLimiter, async (req, res) => {
                 googleId,
                 authProvider: 'google',
                 displayName,
-                picture: picture || undefined
+                picture: picture || undefined,
+                role: 'student'
             });
+            maybeBootstrapAdmin(user);
             await user.save();
         } else {
             if (!user.googleId) user.googleId = googleId;
@@ -687,6 +713,16 @@ router.post('/auth/google', authLimiter, async (req, res) => {
             if (displayName) user.displayName = displayName;
             if (picture) user.picture = picture;
             if (!user.authProvider) user.authProvider = 'google';
+
+            if (user.restricted) {
+                return res.status(403).json({
+                    success: false,
+                    msg: user.restrictionReason || 'Your account is restricted. Contact an admin.',
+                    code: 'ACCOUNT_RESTRICTED'
+                });
+            }
+
+            maybeBootstrapAdmin(user);
             await user.save();
         }
 
@@ -863,16 +899,29 @@ function parsePagination(query) {
     return { page, limit, skip };
 }
 
-function sortSpec(sort) {
-    if (sort === 'likes') return { likeCount: -1, uploadedAt: -1 };
-    return { uploadedAt: -1 };
+function truthyFlag(value) {
+    return value === true || value === 'true' || value === '1' || value === 'yes';
 }
+
+router.get('/meta/resource-types', (req, res) => {
+    res.status(200).json({
+        success: true,
+        resourceTypes: RESOURCE_TYPES
+    });
+});
 
 router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'), async (req, res) => {
     try {
         const owner = await User.findById(req.user.id);
         if (!owner) {
             return res.status(401).json({ success: false, msg: 'Auth. denied' });
+        }
+        if (owner.restricted) {
+            return res.status(403).json({
+                success: false,
+                msg: owner.restrictionReason || 'Your account is restricted.',
+                code: 'ACCOUNT_RESTRICTED'
+            });
         }
         if (await purgeIfDue(owner)) {
             return res.status(401).json({
@@ -889,6 +938,19 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
         const description = req.body.description
             ? String(req.body.description).trim().slice(0, 500)
             : '';
+        const resourceType = normalizeResourceType(req.body.resourceType);
+        const tags = parseTags(req.body.tags);
+        const college = req.body.college
+            ? String(req.body.college).trim().slice(0, 100)
+            : (owner.college || '').trim().slice(0, 100);
+        const university = req.body.university
+            ? String(req.body.university).trim().slice(0, 100)
+            : '';
+        const examYear = req.body.examYear ? String(req.body.examYear).trim().slice(0, 16) : '';
+        const examType = req.body.examType ? String(req.body.examType).trim().slice(0, 60) : '';
+        const changelog = req.body.changelog ? String(req.body.changelog).trim().slice(0, 500) : '';
+        const forceDuplicate = truthyFlag(req.body.forceDuplicate);
+        const versionOfRaw = req.body.versionOf || req.body.parentNoteId || '';
 
         if (!title || !subject || !branch || !sem) {
             return res.status(400).json({
@@ -903,15 +965,62 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
             });
         }
 
-        const data = new FormData();
-        data.append('file', req.file.buffer, req.file.originalname);
-        const response = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', data, {
-            maxBodyLength: Infinity,
-            headers: {
-                'Content-Type': `multipart/form-data; boundary=${data._boundary}`,
-                Authorization: `Bearer ${process.env.PINATA}`
+        let parentNote = null;
+        let rootNoteId = null;
+        let nextVersion = 1;
+        if (versionOfRaw) {
+            parentNote = mongoose.isValidObjectId(versionOfRaw)
+                ? await Note.findById(versionOfRaw)
+                : await Note.findOne({ cid: String(versionOfRaw) });
+            if (!parentNote) {
+                return res.status(404).json({ success: false, msg: 'Parent note for versioning not found.' });
             }
-        });
+            if (!isNoteOwner(parentNote, owner._id, owner.username)) {
+                return res.status(403).json({
+                    success: false,
+                    msg: 'Only the uploader can publish a new version of this note.'
+                });
+            }
+            rootNoteId = parentNote.rootNoteId || parentNote._id;
+            const latest = await Note.findOne({
+                $or: [{ _id: rootNoteId }, { rootNoteId }]
+            }).sort({ version: -1 });
+            nextVersion = (latest?.version || parentNote.version || 1) + 1;
+        }
+
+        const fileHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+        const existingByHash = await Note.findOne({ fileHash }).sort({ uploadedAt: 1 });
+
+        if (existingByHash && !forceDuplicate) {
+            return res.status(409).json({
+                success: false,
+                duplicate: true,
+                msg: 'This exact file was already uploaded. Open the existing note, or confirm to publish again without re-pinning.',
+                existing: serializeNote(existingByHash, {
+                    userId: String(owner._id),
+                    username: owner.username
+                }),
+                fileHash
+            });
+        }
+
+        let cid;
+        let reusedCid = false;
+        if (existingByHash && forceDuplicate) {
+            cid = existingByHash.cid;
+            reusedCid = true;
+        } else {
+            const data = new FormData();
+            data.append('file', req.file.buffer, req.file.originalname);
+            const response = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', data, {
+                maxBodyLength: Infinity,
+                headers: {
+                    'Content-Type': `multipart/form-data; boundary=${data._boundary}`,
+                    Authorization: `Bearer ${process.env.PINATA}`
+                }
+            });
+            cid = response.data.IpfsHash;
+        }
 
         const note = new Note({
             title,
@@ -919,20 +1028,53 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
             branch,
             sem,
             description,
+            resourceType,
+            tags,
+            college,
+            university,
+            examYear,
+            examType,
+            fileHash,
             uploader: owner.username,
             uploaderId: owner._id,
-            cid: response.data.IpfsHash,
+            cid,
             likeCount: 0,
-            likes: []
+            likes: [],
+            viewCount: 0,
+            downloadCount: 0,
+            favoriteCount: 0,
+            shareCount: 0,
+            version: nextVersion,
+            isLatest: true,
+            parentVersionId: parentNote ? parentNote._id : null,
+            rootNoteId: rootNoteId || null,
+            changelog: parentNote ? (changelog || `Version ${nextVersion}`) : ''
         });
         await note.save();
 
+        if (!note.rootNoteId) {
+            note.rootNoteId = note._id;
+            await note.save();
+        } else {
+            await Note.updateMany(
+                {
+                    _id: { $ne: note._id },
+                    $or: [{ _id: note.rootNoteId }, { rootNoteId: note.rootNoteId }]
+                },
+                { $set: { isLatest: false } }
+            );
+        }
+
         res.status(200).json({
             success: true,
-            msg: 'Notes Uploaded.',
-            cid: response.data.IpfsHash,
-            url: ipfsUrl(response.data.IpfsHash),
-            note: serializeNote(note, { userId: String(owner._id), username: owner.username, isOwner: true })
+            msg: reusedCid
+                ? 'Notes Uploaded (reused existing IPFS pin for identical file).'
+                : (parentNote ? `Version ${nextVersion} uploaded.` : 'Notes Uploaded.'),
+            cid,
+            reusedCid,
+            fileHash,
+            url: ipfsUrl(cid),
+            note: serializeNote(note, { userId: String(owner._id), username: owner.username })
         });
     } catch (error) {
         console.log(error);
@@ -947,7 +1089,11 @@ router.post('/ifps/upload', user_jwt, uploadLimiter, upload.single('File_Note'),
 router.get('/ifps/get/:id', optionalJwt, async (req, res) => {
     try {
         const { id } = req.params;
-        const note = await Note.findOne({ cid: id });
+        const note = await Note.findOneAndUpdate(
+            { cid: id },
+            { $inc: { viewCount: 1 } },
+            { new: true }
+        );
         if (!note) {
             return res.status(400).json({
                 success: false,
@@ -984,6 +1130,9 @@ router.get('/ifps/preview/:id', async (req, res) => {
                 msg: "Note doesn't exist"
             });
         }
+
+        // Count preview/open as a download signal (write-light single $inc)
+        Note.updateOne({ _id: note._id }, { $inc: { downloadCount: 1 } }).catch(() => {});
 
         const { response: upstream, url: sourceUrl } = await fetchIpfsContent(note.cid, {
             responseType: 'stream',
@@ -1075,12 +1224,15 @@ router.get('/ifps/mine', user_jwt, async (req, res) => {
             q: req.query.q,
             branch: req.query.branch,
             sem: req.query.sem,
-            subject: req.query.subject
+            subject: req.query.subject,
+            resourceType: req.query.resourceType,
+            tag: req.query.tag,
+            tags: req.query.tags
         });
 
         const [total, notes] = await Promise.all([
             Note.countDocuments(filter),
-            Note.find(filter).sort({ uploadedAt: -1 }).skip(skip).limit(limit)
+            Note.find(filter).sort(sortSpec(req.query.sort)).skip(skip).limit(limit)
         ]);
 
         res.status(200).json({
@@ -1146,6 +1298,35 @@ router.get('/ifps/favorites', user_jwt, async (req, res) => {
     }
 });
 
+// Version history for a note (by Mongo id or CID)
+router.get('/ifps/:id/versions', optionalJwt, async (req, res) => {
+    try {
+        const raw = req.params.id;
+        const note = mongoose.isValidObjectId(raw)
+            ? await Note.findById(raw)
+            : await Note.findOne({ cid: raw });
+        if (!note) {
+            return res.status(404).json({ success: false, msg: 'Note not found' });
+        }
+
+        const rootId = note.rootNoteId || note._id;
+        const versions = await Note.find({
+            $or: [{ _id: rootId }, { rootNoteId: rootId }]
+        }).sort({ version: 1 });
+
+        const ctx = await attachViewerContext(req);
+        res.status(200).json({
+            success: true,
+            rootNoteId: rootId,
+            currentVersion: versions.find((v) => v.isLatest !== false)?.version || note.version || 1,
+            versions: versions.map((v) => serializeNote(v, ctx))
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, msg: 'Failed to load versions' });
+    }
+});
+
 // Toggle favorite
 router.post('/ifps/:id/favorite', user_jwt, async (req, res) => {
     try {
@@ -1168,9 +1349,17 @@ router.post('/ifps/:id/favorite', user_jwt, async (req, res) => {
         if (existingIdx >= 0) {
             user.fav.splice(existingIdx, 1);
             favorited = false;
+            await Note.updateOne({ _id: note._id }, { $inc: { favoriteCount: -1 } });
+            note.favoriteCount = Math.max(0, (note.favoriteCount || 0) - 1);
         } else {
             user.fav.push({ noteId: note._id, cid: note.cid });
             favorited = true;
+            await Note.updateOne({ _id: note._id }, { $inc: { favoriteCount: 1 } });
+            note.favoriteCount = (note.favoriteCount || 0) + 1;
+        }
+        if ((note.favoriteCount || 0) < 0) {
+            note.favoriteCount = 0;
+            await Note.updateOne({ _id: note._id }, { $set: { favoriteCount: 0 } });
         }
         await user.save();
 
@@ -1189,6 +1378,71 @@ router.post('/ifps/:id/favorite', user_jwt, async (req, res) => {
     } catch (err) {
         console.log(err);
         res.status(500).json({ success: false, msg: 'Failed to update favorite' });
+    }
+});
+
+// Record a share / copy-link (idempotent enough: cheap $inc, no payload store)
+router.post('/ifps/:id/share', user_jwt, async (req, res) => {
+    try {
+        const note = await Note.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { shareCount: 1 } },
+            { new: true }
+        );
+        if (!note) {
+            return res.status(404).json({ success: false, msg: 'Note not found' });
+        }
+        const ctx = await attachViewerContext(req);
+        res.status(200).json({
+            success: true,
+            shareCount: note.shareCount || 0,
+            note: serializeNote(note, ctx)
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, msg: 'Failed to record share' });
+    }
+});
+
+// Creator analytics — aggregates existing counters (free-tier, no event stream)
+router.get('/me/analytics', user_jwt, async (req, res) => {
+    try {
+        const me = await User.findById(req.user.id);
+        if (!me) return res.status(401).json({ success: false, msg: 'Auth. denied' });
+        if (await purgeIfDue(me)) {
+            return res.status(401).json({ success: false, msg: 'Account deleted', accountDeleted: true });
+        }
+
+        const { aggregateNoteEngagement, serializeCreatorNoteRow } = require('../utils/analytics');
+        const match = { uploaderId: me._id, isLatest: { $ne: false } };
+        const totals = await aggregateNoteEngagement(Note, match);
+
+        const notes = await Note.find(match)
+            .sort({ viewCount: -1, likeCount: -1, uploadedAt: -1 })
+            .limit(40)
+            .select('title cid subject resourceType uploadedAt isVerified viewCount downloadCount likeCount favoriteCount shareCount');
+
+        const topByViews = [...notes]
+            .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+            .slice(0, 5)
+            .map(serializeCreatorNoteRow);
+        const topByLikes = [...notes]
+            .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
+            .slice(0, 5)
+            .map(serializeCreatorNoteRow);
+
+        res.status(200).json({
+            success: true,
+            analytics: {
+                totals,
+                notes: notes.map(serializeCreatorNoteRow),
+                topByViews,
+                topByLikes
+            }
+        });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, msg: 'Failed to load analytics' });
     }
 });
 
@@ -1213,6 +1467,19 @@ router.post('/ifps/:id/like', user_jwt, async (req, res) => {
         }
         note.likeCount = note.likes.length;
         await note.save();
+
+        if (liked && note.uploaderId) {
+            const actor = await User.findById(userId).select('username');
+            await createNotification({
+                userId: note.uploaderId,
+                type: 'like',
+                actorId: userId,
+                actorUsername: actor?.username || '',
+                noteId: note._id,
+                noteCid: note.cid,
+                message: `@${actor?.username || 'someone'} upvoted “${note.title}”`
+            });
+        }
 
         const ctx = await attachViewerContext(req);
         res.status(200).json({
@@ -1278,6 +1545,24 @@ router.put('/ifps/update/:id', user_jwt, uploadLimiter, upload.single('File_Note
         note.sem = req.body.sem || note.sem;
         if (typeof req.body.description === 'string') {
             note.description = req.body.description.trim().slice(0, 500);
+        }
+        if (req.body.resourceType) {
+            note.resourceType = normalizeResourceType(req.body.resourceType);
+        }
+        if (typeof req.body.tags === 'string' || Array.isArray(req.body.tags)) {
+            note.tags = parseTags(req.body.tags);
+        }
+        if (typeof req.body.college === 'string') {
+            note.college = req.body.college.trim().slice(0, 100);
+        }
+        if (typeof req.body.university === 'string') {
+            note.university = req.body.university.trim().slice(0, 100);
+        }
+        if (typeof req.body.examYear === 'string') {
+            note.examYear = req.body.examYear.trim().slice(0, 16);
+        }
+        if (typeof req.body.examType === 'string') {
+            note.examType = req.body.examType.trim().slice(0, 60);
         }
         note.uploader = owner.username;
 

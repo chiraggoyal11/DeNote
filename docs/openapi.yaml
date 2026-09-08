@@ -1,0 +1,382 @@
+openapi: 3.0.3
+info:
+  title: DeNote API
+  version: 1.0.0
+  description: |
+    REST API for DeNote — college notes on IPFS with community, study tools, moderation, and optional AI.
+    Base path: `/api/denote`. Auth: `Authorization: Bearer <JWT>` unless noted.
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:5000
+    description: Local
+  - url: https://denote-igao.onrender.com
+    description: Production
+tags:
+  - name: Health
+  - name: Auth
+  - name: Notes
+  - name: Community
+  - name: Collections
+  - name: Study
+  - name: Admin
+  - name: Analytics
+  - name: AI
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  status: { type: string, example: ok }
+                  service: { type: string, example: denote }
+                  timestamp: { type: string, format: date-time }
+  /api/denote/register:
+    post:
+      tags: [Auth]
+      summary: Register with college email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                phone: { type: string }
+      responses:
+        '201':
+          description: Registered
+        '400':
+          description: Validation / domain rejection
+  /api/denote/login:
+    post:
+      tags: [Auth]
+      summary: Login with username or email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                username: { type: string }
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccess'
+        '401':
+          description: Invalid credentials
+  /api/denote/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset OTP
+      responses:
+        '200':
+          description: OTP sent or logged (dev)
+  /api/denote/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with OTP
+      responses:
+        '200':
+          description: Password updated
+  /api/denote/auth/google:
+    post:
+      tags: [Auth]
+      summary: Google OAuth sign-in (college domain)
+      responses:
+        '200':
+          description: JWT issued
+  /api/denote/meta/resource-types:
+    get:
+      tags: [Notes]
+      summary: List resource type enums
+      responses:
+        '200':
+          description: Resource types
+  /api/denote/ifps/get:
+    get:
+      tags: [Notes]
+      summary: Query / browse notes
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 12 }
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: resourceType
+          schema: { type: string }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [recent, likes, views] }
+      responses:
+        '200':
+          description: Paginated notes
+  /api/denote/ifps/get/{cid}:
+    get:
+      tags: [Notes]
+      summary: Get note by IPFS CID
+      parameters:
+        - in: path
+          name: cid
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Note detail + gateway URL
+  /api/denote/ifps/upload:
+    post:
+      tags: [Notes]
+      summary: Upload PDF note to IPFS
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Uploaded
+  /api/denote/ifps/mine:
+    get:
+      tags: [Notes]
+      summary: Current user uploads
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Notes owned by caller
+  /api/denote/ifps/favorites:
+    get:
+      tags: [Notes]
+      summary: Favorited notes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Favorites list
+  /api/denote/ifps/{id}/like:
+    post:
+      tags: [Notes]
+      summary: Toggle upvote
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Like state updated
+  /api/denote/ifps/{id}/favorite:
+    post:
+      tags: [Notes]
+      summary: Toggle favorite
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Favorite state updated
+  /api/denote/ifps/{id}/share:
+    post:
+      tags: [Notes]
+      summary: Record a share event
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Share counted
+  /api/denote/me/analytics:
+    get:
+      tags: [Analytics]
+      summary: Uploader engagement analytics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Totals and per-note stats
+  /api/denote/users/{username}:
+    get:
+      tags: [Community]
+      summary: Public profile
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Profile payload
+  /api/denote/notifications:
+    get:
+      tags: [Community]
+      summary: List notifications
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Notifications
+  /api/denote/activity:
+    get:
+      tags: [Community]
+      summary: Following activity feed
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Activity items
+  /api/denote/collections:
+    get:
+      tags: [Collections]
+      summary: List own collections
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Collections
+    post:
+      tags: [Collections]
+      summary: Create collection
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+  /api/denote/study/decks:
+    get:
+      tags: [Study]
+      summary: List study decks
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Decks
+    post:
+      tags: [Study]
+      summary: Create deck
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+  /api/denote/study/progress:
+    get:
+      tags: [Study]
+      summary: Study progress summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Progress
+  /api/denote/study/review:
+    get:
+      tags: [Study]
+      summary: Due flashcards for review
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cards
+  /api/denote/ai/status:
+    get:
+      tags: [AI]
+      summary: AI feature flags / provider
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Status
+  /api/denote/ai/search:
+    post:
+      tags: [AI]
+      summary: Semantic-ish note search (heuristic or OpenAI)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Ranked hits
+  /api/denote/admin/stats:
+    get:
+      tags: [Admin]
+      summary: Moderation dashboard stats
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Stats (moderator+)
+        '403':
+          description: Insufficient role
+  /api/denote/admin/reports:
+    get:
+      tags: [Admin]
+      summary: List content reports
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Reports
+  /api/denote/reports:
+    post:
+      tags: [Admin]
+      summary: File a report (any authenticated user)
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Report created
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    AuthSuccess:
+      type: object
+      properties:
+        success: { type: boolean }
+        token: { type: string }
+        user:
+          type: object
+          properties:
+            _id: { type: string }
+            username: { type: string }
+            email: { type: string }
+            role: { type: string, enum: [student, contributor, moderator, admin] }
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        msg: { type: string }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { authAPI } from '../api'
+import { authAPI, aiAPI } from '../api'
 import AppNav from './AppNav'
 
 function Dashboard({ onLogout }) {
@@ -9,9 +9,23 @@ function Dashboard({ onLogout }) {
     return { username: cached || 'User' }
   })
   const [loading, setLoading] = useState(true)
+  const [recs, setRecs] = useState([])
+  const [aiEnabled, setAiEnabled] = useState(false)
 
   useEffect(() => {
     fetchUserProfile()
+    aiAPI.status()
+      .then((res) => {
+        const on = Boolean(res.data?.ai?.enabled)
+        setAiEnabled(on)
+        if (on) {
+          return aiAPI.recommendations({ limit: 6 }).then((r) => {
+            setRecs(r.data.recommendations || [])
+          })
+        }
+        return null
+      })
+      .catch(() => {})
   }, [])
 
   const fetchUserProfile = async () => {
@@ -27,6 +41,9 @@ function Dashboard({ onLogout }) {
         }
         if (response.data.user.picture) {
           localStorage.setItem('userPicture', response.data.user.picture)
+        }
+        if (response.data.user.role) {
+          localStorage.setItem('role', response.data.user.role)
         }
       }
     } catch (err) {
@@ -61,6 +78,7 @@ function Dashboard({ onLogout }) {
           <div className="home-cta-row">
             <Link to="/notes" className="btn btn-inline">Browse notes</Link>
             <Link to="/upload" className="btn btn-secondary btn-inline">Upload a note</Link>
+            <Link to="/study" className="btn btn-secondary btn-inline">Study</Link>
           </div>
         </div>
         <div className="home-hero-visual" aria-hidden="true">
@@ -83,6 +101,40 @@ function Dashboard({ onLogout }) {
           </div>
         </div>
       </section>
+
+      <section className="home-quick-grid" aria-label="Quick links">
+        <Link to="/notes" className="home-quick-card">
+          <strong>Browse</strong>
+          <span>Find notes by subject, branch, or tags.</span>
+        </Link>
+        <Link to="/study" className="home-quick-card">
+          <strong>Study</strong>
+          <span>Flashcards, quizzes, and your planner.</span>
+        </Link>
+        <Link to="/analytics" className="home-quick-card">
+          <strong>Analytics</strong>
+          <span>Views, opens, saves, and shares.</span>
+        </Link>
+        <Link to="/collections" className="home-quick-card">
+          <strong>Collections</strong>
+          <span>Group notes for a course or exam.</span>
+        </Link>
+      </section>
+
+      {aiEnabled && recs.length > 0 && (
+        <section className="home-section home-section-delay-1">
+          <h2 className="home-section-title">Recommended for you</h2>
+          <p className="home-section-lead">Personalized from subjects you upvote and save (optional AI layer).</p>
+          <ul className="admin-simple-list" style={{ maxWidth: 720 }}>
+            {recs.map((r) => (
+              <li key={r.noteId}>
+                <Link to={`/note/${r.cid}`} className="link">{r.title}</Link>
+                <div className="page-sub">{r.subject || 'General'} · {r.reason}</div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="home-section home-section-delay-1">
         <h2 className="home-section-title">How DeNote works</h2>
@@ -135,6 +187,10 @@ function Dashboard({ onLogout }) {
           <li>
             <strong>Secure sign-in</strong>
             <span>Use username & password or Google, with profile controls.</span>
+          </li>
+          <li>
+            <strong>Track engagement</strong>
+            <span>See views, opens, upvotes, saves, and shares on your Analytics page.</span>
           </li>
           <li>
             <strong>Own your account</strong>

@@ -35,6 +35,27 @@ const userSchema = new mongoose.Schema({
         enum: ['local', 'google'],
         default: 'local'
     },
+    role: {
+        type: String,
+        enum: ['student', 'contributor', 'moderator', 'admin'],
+        default: 'student',
+        index: true
+    },
+    restricted: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    restrictionReason: {
+        type: String,
+        trim: true,
+        maxlength: 300,
+        default: ''
+    },
+    restrictedAt: {
+        type: Date,
+        default: null
+    },
     displayName: {
         type: String,
         trim: true
