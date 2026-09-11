@@ -81,14 +81,19 @@ Important env vars (see `.env.example`):
 
 ---
 
-## Testing & CI
+## Testing & CI/CD
 
 ```bash
-npm test                     # node --test tests/ (unit + HTTP smoke, no DB)
+npm test                     # node --test tests/*.test.js (unit + HTTP smoke, no DB)
 cd frontend && npm run build # production bundle / code-splitting check
 ```
 
-GitHub Actions runs both on pushes and PRs (`.github/workflows/ci.yml`).
+GitHub Actions:
+
+- **CI** — tests + frontend build on pushes/PRs (`.github/workflows/ci.yml`)
+- **CD** — deploy frontend (Vercel) + backend (Render) after CI succeeds on `main` (`.github/workflows/cd.yml`)
+
+CD secrets setup: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ---
 
