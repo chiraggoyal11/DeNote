@@ -4,12 +4,10 @@ const mongoose = require('mongoose');
 const user_jwt = require('../middleware/jwt');
 const User = require('../models/user');
 const Note = require('../models/note');
-const StudyDeck = require('../models/studyDeck');
-const Flashcard = require('../models/flashcard');
 const { purgeIfDue } = require('../utils/accountDeletion');
 const { getAiStatus, getProvider } = require('../utils/ai');
 const { AiDisabledError } = require('../utils/ai/disabledProvider');
-const { enrichNoteWithDocumentText, suggestedQuizCount } = require('../utils/ai/noteDocumentText');
+const { enrichNoteWithDocumentText } = require('../utils/ai/noteDocumentText');
 
 async function loadMe(req) {
     if (!req.user?.id) return null;
@@ -122,85 +120,7 @@ router.post('/ai/search', user_jwt, async (req, res) => {
     }
 });
 
-router.post('/ai/generate-quiz', user_jwt, async (req, res) => {
-    try {
-        const me = await loadMe(req);
-        if (!me) return res.status(401).json({ success: false, msg: 'Auth. denied' });
-        const note = await loadNoteWithDocument(req.body.noteId);
-        if (!note) return res.status(404).json({ success: false, msg: 'Note not found.' });
-        // Omit count (or pass null) to auto-scale with document length
-        const rawCount = req.body.count;
-        const count = rawCount == null || rawCount === '' || rawCount === 'auto'
-            ? undefined
-            : Math.min(20, Math.max(3, parseInt(rawCount, 10) || suggestedQuizCount(note.documentText)));
 
-        const provider = await getProvider();
-        const result = await provider.generateQuiz({ note, count });
-        res.status(200).json({
-            success: true,
-            provider: provider.name,
-            noteId: note._id,
-            ...result
-        });
-    } catch (err) {
-        return handleAiError(err, res);
-    }
-});
-
-router.post('/ai/generate-flashcards', user_jwt, async (req, res) => {
-    try {
-        const me = await loadMe(req);
-        if (!me) return res.status(401).json({ success: false, msg: 'Auth. denied' });
-        const note = await loadNoteWithDocument(req.body.noteId);
-        if (!note) return res.status(404).json({ success: false, msg: 'Note not found.' });
-        const rawCount = req.body.count;
-        const count = rawCount == null || rawCount === '' || rawCount === 'auto'
-            ? undefined
-            : Math.min(20, Math.max(3, parseInt(rawCount, 10) || 6));
-        const saveToDeck = Boolean(req.body.saveToDeck);
-
-        const provider = await getProvider();
-        const result = await provider.generateFlashcards({ note, count });
-
-        let deck = null;
-        if (saveToDeck && Array.isArray(result.cards) && result.cards.length) {
-            deck = await StudyDeck.create({
-                ownerId: me._id,
-                title: `AI · ${String(note.title || 'Note').slice(0, 80)}`,
-                subject: note.subject || '',
-                description: `Generated via ${provider.name} from note ${note._id}`,
-                noteId: note._id,
-                cardCount: 0
-            });
-            for (const c of result.cards) {
-                await Flashcard.create({
-                    deckId: deck._id,
-                    ownerId: me._id,
-                    front: String(c.front || '').slice(0, 1000),
-                    back: String(c.back || '').slice(0, 2000),
-                    subject: String(c.subject || note.subject || '').slice(0, 80),
-                    dueAt: new Date()
-                });
-            }
-            const cardCount = await Flashcard.countDocuments({ deckId: deck._id });
-            deck.cardCount = cardCount;
-            deck.updatedAt = new Date();
-            await deck.save();
-        }
-
-        res.status(200).json({
-            success: true,
-            provider: provider.name,
-            noteId: note._id,
-            ...result,
-            savedDeck: deck
-                ? { _id: deck._id, title: deck.title, cardCount: deck.cardCount }
-                : null
-        });
-    } catch (err) {
-        return handleAiError(err, res);
-    }
-});
 
 router.get('/ai/recommendations', user_jwt, async (req, res) => {
     try {

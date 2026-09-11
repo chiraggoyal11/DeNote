@@ -1,5 +1,5 @@
 /**
- * Fetch note PDF from IPFS and extract plain text for Study AI.
+ * Fetch note PDF from IPFS and extract plain text for optional Note AI.
  * Free-tier: in-memory cache by CID, no Redis.
  */
 
@@ -128,19 +128,6 @@ async function enrichNoteWithDocumentText(note) {
     return plain;
 }
 
-function suggestedQuizCount(documentText, requested) {
-    if (requested != null && !Number.isNaN(Number(requested)) && Number(requested) > 0) {
-        return Math.min(20, Math.max(3, parseInt(requested, 10)));
-    }
-    const text = String(documentText || '');
-    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-    if (words < 80) return 3;
-    if (words < 250) return 5;
-    if (words < 600) return 8;
-    if (words < 1200) return 10;
-    if (words < 2500) return 12;
-    return 15;
-}
 
 function suggestedSummarySentenceCount(documentText) {
     const words = String(documentText || '').trim().split(/\s+/).filter(Boolean).length;
@@ -154,7 +141,6 @@ function suggestedSummarySentenceCount(documentText) {
 module.exports = {
     extractNoteDocumentText,
     enrichNoteWithDocumentText,
-    suggestedQuizCount,
     suggestedSummarySentenceCount,
     cleanExtractedText,
     // test helpers

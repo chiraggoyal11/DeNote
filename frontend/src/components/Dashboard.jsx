@@ -78,7 +78,6 @@ function Dashboard({ onLogout }) {
           <div className="home-cta-row">
             <Link to="/notes" className="btn btn-inline">Browse notes</Link>
             <Link to="/upload" className="btn btn-secondary btn-inline">Upload a note</Link>
-            <Link to="/study" className="btn btn-secondary btn-inline">Study</Link>
           </div>
         </div>
         <div className="home-hero-visual" aria-hidden="true">
@@ -106,10 +105,6 @@ function Dashboard({ onLogout }) {
         <Link to="/notes" className="home-quick-card">
           <strong>Browse</strong>
           <span>Find notes by subject, branch, or tags.</span>
-        </Link>
-        <Link to="/study" className="home-quick-card">
-          <strong>Study</strong>
-          <span>Flashcards, quizzes, and your planner.</span>
         </Link>
         <Link to="/analytics" className="home-quick-card">
           <strong>Analytics</strong>

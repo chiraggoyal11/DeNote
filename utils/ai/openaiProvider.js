@@ -4,7 +4,7 @@
  */
 
 const heuristic = require('./heuristicProvider');
-const { suggestedQuizCount, suggestedSummarySentenceCount } = require('./noteDocumentText');
+const { suggestedSummarySentenceCount } = require('./noteDocumentText');
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -92,63 +92,7 @@ async function semanticSearch(args) {
     return heuristic.semanticSearch(args);
 }
 
-async function generateQuiz({ note, count }) {
-    const n = suggestedQuizCount(note.documentText || note.description || '', count);
-    try {
-        const content = await chat([
-            {
-                role: 'system',
-                content: 'Create study quiz questions grounded in the document content (not just the title). Return JSON {"questions":[{"prompt":"...","answer":"...","subject":"..."}]} only.'
-            },
-            {
-                role: 'user',
-                content: `Make ${n} questions from this document. Scale difficulty to the material:\n${noteContext(note)}`
-            }
-        ], { max_tokens: 1600 });
-        const parsed = JSON.parse(content.replace(/```json|```/g, '').trim());
-        if (Array.isArray(parsed.questions) && parsed.questions.length) {
-            return {
-                questions: parsed.questions.slice(0, n),
-                method: 'openai-document',
-                document: {
-                    ...(note.documentMeta || {}),
-                    questionCount: Math.min(parsed.questions.length, n)
-                }
-            };
-        }
-    } catch (err) {
-        const fallback = await heuristic.generateQuiz({ note, count: n });
-        return { ...fallback, method: 'heuristic-fallback' };
-    }
-    return heuristic.generateQuiz({ note, count: n });
-}
 
-async function generateFlashcards({ note, count }) {
-    const n = count != null
-        ? Math.min(20, Math.max(3, parseInt(count, 10) || 6))
-        : suggestedQuizCount(note.documentText || note.description || '');
-    try {
-        const content = await chat([
-            {
-                role: 'system',
-                content: 'Create flashcards from the document content. Return JSON {"cards":[{"front":"...","back":"...","subject":"..."}]} only.'
-            },
-            { role: 'user', content: `Make ${n} flashcards from:\n${noteContext(note)}` }
-        ], { max_tokens: 1600 });
-        const parsed = JSON.parse(content.replace(/```json|```/g, '').trim());
-        if (Array.isArray(parsed.cards) && parsed.cards.length) {
-            return {
-                cards: parsed.cards.slice(0, n),
-                method: 'openai-document',
-                document: note.documentMeta || null
-            };
-        }
-    } catch (err) {
-        const fallback = await heuristic.generateFlashcards({ note, count: n });
-        return { ...fallback, method: 'heuristic-fallback' };
-    }
-    return heuristic.generateFlashcards({ note, count: n });
-}
 
 async function recommend(args) {
     return heuristic.recommend(args);
@@ -159,7 +103,5 @@ module.exports = {
     summarize,
     assist,
     semanticSearch,
-    generateQuiz,
-    generateFlashcards,
     recommend
 };

@@ -30,7 +30,7 @@ function getAiStatus() {
         mode: !enabled || provider === 'disabled' ? 'disabled' : provider,
         limitations: [
             'AI is optional and off by default (AI_ENABLED=false).',
-            'When enabled, Study AI fetches the note PDF from IPFS and extracts text (pdf-parse) before summarizing or generating quizzes.',
+            'When enabled, Note AI fetches the note PDF from IPFS and extracts text (pdf-parse) before summarizing or answering questions.',
             'heuristic mode is local/extractive over document text (no paid API).',
             'openai mode requires OPENAI_API_KEY and also receives extracted document text; falls back to heuristic if unset/fails.',
             'Scanned image-only PDFs may yield little text without OCR (not included on the free tier).'

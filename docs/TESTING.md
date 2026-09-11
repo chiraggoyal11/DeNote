@@ -19,7 +19,6 @@ cd frontend && npm ci && npm run build
 |------|----------|-----------|
 | College email domain rules | `tests/collegeEmail.test.js` | No |
 | Roles / admin bootstrap | `tests/roles.test.js` | No |
-| SM-2 spaced repetition | `tests/spacedRepetition.test.js` | No |
 | Resource types / quality score | `tests/resourceTypes.test.js` | No |
 | AI provider config | `tests/aiConfig.test.js` | No |
 | `/health`, meta, 404, auth gate | `tests/http.smoke.test.js` | No |

@@ -64,7 +64,6 @@ function AppNav({ onLogout }) {
       <NavLink to="/collections" onClick={closeNav}>Collections</NavLink>
       <NavLink to="/my-uploads" onClick={closeNav}>My uploads</NavLink>
       <NavLink to="/analytics" onClick={closeNav}>Analytics</NavLink>
-      <NavLink to="/study" onClick={closeNav}>Study</NavLink>
       <NavLink to="/favorites" onClick={closeNav}>Favorites</NavLink>
       {isStaff && <NavLink to="/admin" onClick={closeNav}>Moderation</NavLink>}
       <NavLink to="/upload" className="nav-cta" onClick={closeNav}>Upload</NavLink>
@@ -127,9 +126,6 @@ function AppNav({ onLogout }) {
               </Link>
               <Link to="/analytics" role="menuitem" className="profile-dropdown-item" onClick={() => setOpen(false)}>
                 Analytics
-              </Link>
-              <Link to="/study" role="menuitem" className="profile-dropdown-item" onClick={() => setOpen(false)}>
-                Study
               </Link>
               <Link to="/favorites" role="menuitem" className="profile-dropdown-item" onClick={() => setOpen(false)}>
                 Favorites

@@ -3,7 +3,7 @@ info:
   title: DeNote API
   version: 1.0.0
   description: |
-    REST API for DeNote — college notes on IPFS with community, study tools, moderation, and optional AI.
+    REST API for DeNote — college notes on IPFS with community, moderation, and optional AI.
     Base path: `/api/denote`. Auth: `Authorization: Bearer <JWT>` unless noted.
   license:
     name: MIT
@@ -18,7 +18,6 @@ tags:
   - name: Notes
   - name: Community
   - name: Collections
-  - name: Study
   - name: Admin
   - name: Analytics
   - name: AI
@@ -274,41 +273,9 @@ paths:
       responses:
         '201':
           description: Created
-  /api/denote/study/decks:
-    get:
-      tags: [Study]
-      summary: List study decks
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Decks
-    post:
-      tags: [Study]
-      summary: Create deck
-      security:
-        - bearerAuth: []
-      responses:
-        '201':
-          description: Created
-  /api/denote/study/progress:
-    get:
-      tags: [Study]
-      summary: Study progress summary
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Progress
-  /api/denote/study/review:
-    get:
-      tags: [Study]
-      summary: Due flashcards for review
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Cards
+
+
+
   /api/denote/ai/status:
     get:
       tags: [AI]

@@ -58,7 +58,7 @@ function Collections({ onLogout }) {
       <section className="page-head">
         <div>
           <h1 className="page-title">Collections</h1>
-          <p className="page-sub">Group notes into study packs. Make them private or share a public link.</p>
+          <p className="page-sub">Group notes into packs. Keep them private or share a public link.</p>
         </div>
       </section>
 

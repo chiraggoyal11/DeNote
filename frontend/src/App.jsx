@@ -19,7 +19,6 @@ const PublicProfile = lazy(() => import('./components/PublicProfile'))
 const Activity = lazy(() => import('./components/Activity'))
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const Analytics = lazy(() => import('./components/Analytics'))
-const Study = lazy(() => import('./components/Study'))
 
 function RouteFallback() {
   return (
@@ -122,10 +121,6 @@ function App() {
           <Route
             path="/analytics"
             element={isAuthenticated ? <Analytics onLogout={handleLogout} /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/study"
-            element={isAuthenticated ? <Study onLogout={handleLogout} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/profile"

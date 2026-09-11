@@ -2,7 +2,6 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const heuristic = require('../utils/ai/heuristicProvider');
 const {
-    suggestedQuizCount,
     suggestedSummarySentenceCount,
     cleanExtractedText
 } = require('../utils/ai/noteDocumentText');
@@ -19,13 +18,6 @@ Security. Access control, authentication, and isolation protect system integrity
 `.repeat(3);
 
 describe('noteDocumentText helpers', () => {
-    it('scales quiz count with document size', () => {
-        assert.equal(suggestedQuizCount('short text only'), 3);
-        assert.ok(suggestedQuizCount(SAMPLE_DOC) >= 8);
-        assert.equal(suggestedQuizCount(SAMPLE_DOC, 7), 7);
-        assert.equal(suggestedQuizCount(SAMPLE_DOC, 99), 20);
-    });
-
     it('scales summary sentence budget', () => {
         assert.ok(suggestedSummarySentenceCount(SAMPLE_DOC) >= 5);
         assert.equal(suggestedSummarySentenceCount('tiny'), 3);
@@ -38,7 +30,7 @@ describe('noteDocumentText helpers', () => {
     });
 });
 
-describe('heuristic Study AI from document text', () => {
+describe('heuristic Note AI from document text', () => {
     const note = {
         _id: 'n1',
         title: 'OS Cheat Sheet',
@@ -59,19 +51,5 @@ describe('heuristic Study AI from document text', () => {
         assert.ok(result.summary.toLowerCase().includes('process') || result.summary.toLowerCase().includes('memory') || result.summary.toLowerCase().includes('operating'));
         assert.ok(Array.isArray(result.bullets) && result.bullets.length >= 3);
         assert.equal(result.document.source, 'pdf');
-    });
-
-    it('generateQuiz scales with content and cites document method', async () => {
-        const result = await heuristic.generateQuiz({ note, count: undefined });
-        assert.ok(result.questions.length >= 8);
-        assert.ok(result.questions.length <= 15);
-        assert.match(result.method, /pdf|content/);
-        const blob = result.questions.map((q) => `${q.prompt} ${q.answer}`).join(' ').toLowerCase();
-        assert.ok(blob.includes('process') || blob.includes('memory') || blob.includes('deadlock') || blob.includes('semaphore'));
-    });
-
-    it('respects explicit quiz count', async () => {
-        const result = await heuristic.generateQuiz({ note, count: 4 });
-        assert.equal(result.questions.length, 4);
     });
 });
