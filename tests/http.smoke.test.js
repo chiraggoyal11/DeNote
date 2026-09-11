@@ -60,8 +60,8 @@ describe('HTTP smoke (no DB)', () => {
         assert.match(body.msg, /not found/i);
     });
 
-    it('protected study route rejects missing auth', async () => {
-        const res = await fetch(`${base}/api/denote/study/decks`);
+    it('protected AI status rejects missing auth', async () => {
+        const res = await fetch(`${base}/api/denote/ai/status`);
         assert.ok([401, 403].includes(res.status));
     });
 });

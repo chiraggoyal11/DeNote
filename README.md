@@ -1,6 +1,6 @@
 # DeNote
 
-DeNote is a full-stack web application for securely uploading, discovering, and studying academic notes with decentralized storage (IPFS).
+DeNote is a full-stack web application for securely uploading, discovering, and sharing academic notes with decentralized storage (IPFS).
 
 **Live Demo:** [https://denote-nu.vercel.app](https://denote-nu.vercel.app)
 
@@ -13,7 +13,7 @@ DeNote is a full-stack web application for securely uploading, discovering, and 
 ## Overview
 
 - Full-stack app with JWT auth, MongoDB metadata, and Pinata/IPFS file storage
-- Browse, favorite, collect, comment, follow, study (flashcards / SM-2), moderate, and optional AI assist
+- Browse, favorite, collect, comment, follow, moderate, and optional AI assist
 - Free-tier oriented: no paid Redis/queues required; offline shell + IndexedDB read fallbacks on the frontend
 
 ---
@@ -25,8 +25,7 @@ DeNote is a full-stack web application for securely uploading, discovering, and 
 - Community: profiles, follows, comments, notifications, activity feed
 - Collections (personal + share links)
 - Moderation/admin roles, reports, verification, audit logs
-- Study hub: decks, planner, spaced repetition, quizzes
-- Optional AI (disabled / heuristic / OpenAI)
+- Optional Note AI summarize / ask (disabled / heuristic / OpenAI)
 - PWA shell + IndexedDB offline cache for previously loaded lists
 - Analytics for uploaders
 

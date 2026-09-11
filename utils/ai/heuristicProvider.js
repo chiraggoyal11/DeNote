@@ -1,10 +1,9 @@
 /**
- * Free-tier local AI: extractive summarization + quiz/flashcards from PDF text
+ * Free-tier local AI: extractive summarization from PDF text
  * (falls back to metadata when PDF text is unavailable).
  */
 
 const {
-    suggestedQuizCount,
     suggestedSummarySentenceCount
 } = require('./noteDocumentText');
 
@@ -221,90 +220,8 @@ function semanticSearch(notes, query, limit = 10) {
         }));
 }
 
-function blankKeyPhrase(sentence) {
-    const tokens = String(sentence)
-        .replace(/[^a-zA-Z0-9\s-]/g, ' ')
-        .split(/\s+/)
-        .filter((t) => t.length >= 5 && !STOP.has(t.toLowerCase()));
-    if (!tokens.length) return null;
-    // Prefer a mid-length content word
-    const ranked = [...tokens].sort((a, b) => b.length - a.length);
-    const answer = ranked[0];
-    const prompt = sentence.replace(new RegExp(`\\b${answer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`), '______');
-    if (prompt === sentence) return null;
-    return { prompt: `Fill in the blank: ${prompt}`, answer, subject: null };
-}
 
-function generateFlashcards(note, count = 6) {
-    const body = bodyText(note);
-    const subject = note.subject || 'General';
-    const sentences = uniquePreserve(sentencesFrom(body));
-    const cards = [];
 
-    for (const s of sentences) {
-        if (cards.length >= count) break;
-        const blank = blankKeyPhrase(s);
-        if (blank) {
-            cards.push({
-                front: blank.prompt,
-                back: `${blank.answer} — ${s}`,
-                subject
-            });
-            continue;
-        }
-        const short = s.length > 100 ? `${s.slice(0, 97)}…` : s;
-        cards.push({
-            front: `Explain / recall: ${short}`,
-            back: s,
-            subject
-        });
-    }
-
-    if (note.title && cards.length < count) {
-        cards.unshift({
-            front: `What is the main topic of “${note.title}”?`,
-            back: `${note.title} — ${subject}${note.branch ? ` (${note.branch}, sem ${note.sem || '?'})` : ''}`,
-            subject
-        });
-    }
-
-    while (cards.length < Math.min(3, count)) {
-        cards.push({
-            front: `Key takeaway from ${note.title || 'this note'}?`,
-            back: extractiveSummary(note, 2).summary,
-            subject
-        });
-    }
-
-    return {
-        cards: cards.slice(0, count),
-        method: note.documentText ? 'heuristic-pdf-cards' : 'heuristic-templates',
-        document: note.documentMeta || null
-    };
-}
-
-function generateQuiz(note, count) {
-    const body = bodyText(note);
-    const n = suggestedQuizCount(body, count);
-    const { cards, method, document } = generateFlashcards(note, n);
-    const questions = cards.map((c, i) => ({
-        id: `q${i + 1}`,
-        prompt: c.front.startsWith('Fill in the blank:')
-            ? c.front
-            : c.front.replace(/^Explain \/ recall:\s*/i, 'What does this note say about: ').replace(/\?$/, '') + '?',
-        answer: c.back,
-        subject: c.subject
-    }));
-    return {
-        questions,
-        method: method.includes('pdf') ? 'heuristic-pdf-quiz' : 'heuristic-from-content',
-        document: {
-            ...(document || {}),
-            requestedCount: count ?? null,
-            questionCount: questions.length
-        }
-    };
-}
 
 function recommend(notes, { likedSubjects = [], favoriteSubjects = [], limit = 8 } = {}) {
     const affinity = new Map();
@@ -349,12 +266,6 @@ module.exports = {
         results: semanticSearch(notes, query, limit),
         method: 'heuristic-bow'
     }),
-    generateQuiz: async ({ note, count }) => generateQuiz(note, count),
-    generateFlashcards: async ({ note, count }) => {
-        const body = bodyText(note);
-        const n = count != null ? Math.min(20, Math.max(3, parseInt(count, 10) || 6)) : suggestedQuizCount(body);
-        return generateFlashcards(note, n);
-    },
     recommend: async (args) => ({
         recommendations: recommend(args.notes, args),
         method: 'heuristic-affinity'

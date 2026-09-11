@@ -65,13 +65,7 @@ export function cacheKeyNote(cid) {
   return ['notes', 'one', cid]
 }
 
-export function cacheKeyStudyProgress() {
-  return ['study', 'progress']
-}
 
-export function cacheKeyStudyDecks() {
-  return ['study', 'decks']
-}
 
 export function cacheKeyAnalytics() {
   return ['analytics', 'me']

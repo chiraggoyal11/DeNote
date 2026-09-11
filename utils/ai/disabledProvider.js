@@ -16,8 +16,6 @@ module.exports = {
     summarize: unavailable,
     assist: unavailable,
     semanticSearch: unavailable,
-    generateQuiz: unavailable,
-    generateFlashcards: unavailable,
     recommend: unavailable,
     AiDisabledError
 };

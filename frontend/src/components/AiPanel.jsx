@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { aiAPI } from '../api'
 
 function documentHint(doc) {
@@ -21,9 +20,6 @@ function AiPanel({ noteId, noteTitle }) {
   const [summary, setSummary] = useState(null)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState(null)
-  const [quiz, setQuiz] = useState(null)
-  const [cards, setCards] = useState(null)
-  const [savedDeck, setSavedDeck] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -53,7 +49,7 @@ function AiPanel({ noteId, noteTitle }) {
 
   return (
     <section className="panel ai-panel" style={{ marginTop: '1rem' }}>
-      <h2 className="home-section-title" style={{ marginTop: 0 }}>Study AI</h2>
+      <h2 className="home-section-title" style={{ marginTop: 0 }}>Note AI</h2>
       <p className="page-sub">
         Optional assistant for “{noteTitle || 'this note'}”. Reads the PDF text from IPFS when possible.{' '}
         {status
@@ -79,29 +75,6 @@ function AiPanel({ noteId, noteTitle }) {
             >
               Summarize
             </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-inline"
-              disabled={busy}
-              onClick={() => run('Reading PDF & generating quiz…', async () => {
-                const res = await aiAPI.generateQuiz(noteId) // auto count from content length
-                setQuiz(res.data)
-              })}
-            >
-              Generate quiz
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-inline"
-              disabled={busy}
-              onClick={() => run('Reading PDF & building flashcards…', async () => {
-                const res = await aiAPI.generateFlashcards(noteId, { saveToDeck: true })
-                setCards(res.data)
-                setSavedDeck(res.data.savedDeck || null)
-              })}
-            >
-              Flashcards → Study deck
-            </button>
           </div>
 
           {busy && busyLabel && (
@@ -109,7 +82,7 @@ function AiPanel({ noteId, noteTitle }) {
           )}
 
           <form
-            className="study-form"
+            className="ai-form"
             style={{ marginTop: '0.85rem' }}
             onSubmit={(e) => {
               e.preventDefault()
@@ -155,48 +128,6 @@ function AiPanel({ noteId, noteTitle }) {
           <p className="page-sub">
             {documentHint(answer.document)}
             {answer.method ? `${documentHint(answer.document) ? ' · ' : ''}${answer.method}` : ''}
-          </p>
-        </div>
-      )}
-
-      {quiz?.questions && (
-        <div className="ai-result">
-          <h3>Generated quiz ({quiz.questions.length} questions)</h3>
-          <p className="page-sub" style={{ marginTop: 0 }}>
-            {documentHint(quiz.document) || 'Question count scales with document length.'}
-          </p>
-          <ul className="admin-simple-list">
-            {quiz.questions.map((q) => (
-              <li key={q.id || q.prompt}>
-                <strong>{q.prompt}</strong>
-                <div className="page-sub">{q.answer}</div>
-              </li>
-            ))}
-          </ul>
-          <p className="page-sub">method: {quiz.method}</p>
-        </div>
-      )}
-
-      {cards?.cards && (
-        <div className="ai-result">
-          <h3>Generated flashcards ({cards.cards.length})</h3>
-          {savedDeck && (
-            <p className="page-sub">
-              Saved as deck “{savedDeck.title}” ({savedDeck.cardCount} cards).{' '}
-              <Link to="/study" className="link">Open Study</Link>
-            </p>
-          )}
-          <ul className="admin-simple-list">
-            {cards.cards.map((c) => (
-              <li key={c.front}>
-                <strong>{c.front}</strong>
-                <div className="page-sub">{c.back}</div>
-              </li>
-            ))}
-          </ul>
-          <p className="page-sub">
-            {documentHint(cards.document)}
-            {cards.method ? `${documentHint(cards.document) ? ' · ' : ''}${cards.method}` : ''}
           </p>
         </div>
       )}
