@@ -6,7 +6,7 @@ DeNote is a full-stack web application for securely uploading, discovering, and 
 
 **Backend API:** [https://denote-igao.onrender.com](https://denote-igao.onrender.com)
 
-**OpenAPI:** [`docs/openapi.yaml`](docs/openapi.yaml) · **Testing:** [`docs/TESTING.md`](docs/TESTING.md)
+**OpenAPI:** [`docs/openapi.yaml`](docs/openapi.yaml) · **Testing:** [`docs/TESTING.md`](docs/TESTING.md) · **Interview guide:** [`docs/INTERVIEW_PROJECT_GUIDE.md`](docs/INTERVIEW_PROJECT_GUIDE.md)
 
 ---
 
